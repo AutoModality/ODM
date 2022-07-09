@@ -30,7 +30,7 @@ def get_orthophoto_vars(args):
 def build_overviews(orthophoto_file):
     log.ODM_INFO("Building Overviews")
     kwargs = {'orthophoto': orthophoto_file}
-    
+
     # Run gdaladdo
     system.run('gdaladdo -r average '
                 '--config BIGTIFF_OVERVIEW IF_SAFER '
@@ -41,27 +41,25 @@ def generate_png(orthophoto_file, output_file=None, outsize=None):
     if output_file is None:
         base, ext = os.path.splitext(orthophoto_file)
         output_file = base + '.png'
-    
+
     # See if we need to select top three bands
     bandparam = ""
+
     gtif = gdal.Open(orthophoto_file)
     if gtif.RasterCount > 4:
-        try:
-            bands = []
-            for idx in range(1, gtif.RasterCount+1):
-                bands.append(gtif.GetRasterBand(idx).GetColorInterpretation())
+        bands = []
+        for idx in range(1, gtif.RasterCount+1):
+            bands.append(gtif.GetRasterBand(idx).GetColorInterpretation())
+        bands = dict(zip(bands, range(1, len(bands)+1)))
 
-            bands = dict(zip(bands, range(1, len(bands)+1)))
-            red = bands.get(3)
-            green = bands.get(4)
-            blue = bands.get(5)
-            alpha = bands.get(6)
-            if alpha is not None:
-                bandparam = "-b %s -b %s -b %s -b %s -a_nodata 0" % (red, green, blue, alpha)
-            else:
-                bandparam = "-b %s -b %s -b %s -a_nodata 0" % (red, green, blue)
-        except Exception as e:
+        try:
+            red = bands.get(gdal.GCI_RedBand)
+            green = bands.get(gdal.GCI_GreenBand)
+            blue = bands.get(gdal.GCI_BlueBand)
+            bandparam = "-b %s -b %s -b %s -a_nodata 0" % (red, green, blue)
+        except:
             bandparam = "-b 1 -b 2 -b 3 -a_nodata 0"
+    gtif = None
 
     osparam = ""
     if outsize is not None:
@@ -76,7 +74,7 @@ def generate_kmz(orthophoto_file, output_file=None, outsize=None):
     if output_file is None:
         base, ext = os.path.splitext(orthophoto_file)
         output_file = base + '.kmz'
-    
+
     # See if we need to select top three bands
     bandparam = ""
     gtif = gdal.Open(orthophoto_file)
@@ -84,8 +82,8 @@ def generate_kmz(orthophoto_file, output_file=None, outsize=None):
         bandparam = "-b 1 -b 2 -b 3 -a_nodata 0"
 
     system.run('gdal_translate -of KMLSUPEROVERLAY -co FORMAT=JPEG "%s" "%s" %s '
-               '--config GDAL_CACHEMAX %s%% ' % (orthophoto_file, output_file, bandparam, get_max_memory()))    
-    
+               '--config GDAL_CACHEMAX %s%% ' % (orthophoto_file, output_file, bandparam, get_max_memory()))
+
 def post_orthophoto_steps(args, bounds_file_path, orthophoto_file, orthophoto_tiles_dir):
     if args.crop > 0 or args.boundary:
         Cropper.crop(bounds_file_path, orthophoto_file, get_orthophoto_vars(args), keep_original=not args.optimize_disk_space, warp_options=['-dstalpha'])
@@ -95,7 +93,7 @@ def post_orthophoto_steps(args, bounds_file_path, orthophoto_file, orthophoto_ti
 
     if args.orthophoto_png:
         generate_png(orthophoto_file)
-        
+
     if args.orthophoto_kmz:
         generate_kmz(orthophoto_file)
 
@@ -109,7 +107,7 @@ def compute_mask_raster(input_raster, vector_mask, output_raster, blend_distance
     if not os.path.exists(input_raster):
         log.ODM_WARNING("Cannot mask raster, %s does not exist" % input_raster)
         return
-    
+
     if not os.path.exists(vector_mask):
         log.ODM_WARNING("Cannot mask raster, %s does not exist" % vector_mask)
         return
@@ -131,7 +129,7 @@ def compute_mask_raster(input_raster, vector_mask, output_raster, blend_distance
                             max_coords_feature = feature
                 if max_coords_feature is not None:
                     burn_features = [max_coords_feature]
-            
+
             shapes = [feature["geometry"] for feature in burn_features]
             out_image, out_transform = mask(rast, shapes, nodata=0)
 
@@ -158,7 +156,7 @@ def feather_raster(input_raster, output_raster, blend_distance=20):
         return
 
     log.ODM_INFO("Computing feather raster: %s" % output_raster)
-    
+
     with rasterio.open(input_raster, 'r') as rast:
         out_image = rast.read()
         if blend_distance > 0:
@@ -303,7 +301,7 @@ def merge(input_ortho_and_ortho_cuts, output_orthophoto, orthophoto_vars={}):
                     blended = temp[-1] / 255.0 * temp[b] + (1 - temp[-1] / 255.0) * dstarr[b]
                     np.copyto(dstarr[b], blended, casting='unsafe', where=where)
                 dstarr[-1][where] = 255.0
-                
+
                 # check if dest has any nodata pixels available
                 if np.count_nonzero(dstarr[-1]) == blocksize:
                     break
