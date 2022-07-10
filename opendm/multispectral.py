@@ -436,7 +436,7 @@ def compute_homography(image_filename, align_image_filename):
         log.ODM_WARNING("Compute homography: %s" % str(e))
         return None, (None, None), None
 
-def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000, termination_eps=1e-8, start_eps=1e-4):
+def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000, termination_eps=1e-7, start_eps=1e-4):
     # Major props to Alexander Reynolds for his insight into the pyramided matching process found at
     # https://stackoverflow.com/questions/45997891/cv2-motion-euclidean-for-the-warp-mode-in-ecc-image-alignment-method
     pyramid_levels = 0
@@ -492,7 +492,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
                 number_of_iterations, eps)
 
         try:
-            gaussian_filter_size = 9
+            gaussian_filter_size = 8
             log.ODM_INFO("Computing ECC pyramid level %s using Gaussian filter size %s" % (level, gaussian_filter_size))
             _, warp_matrix = cv2.findTransformECC(ig, aig, warp_matrix, cv2.MOTION_HOMOGRAPHY, criteria, inputMask=None, gaussFiltSize=gaussian_filter_size)
         except Exception as e:
