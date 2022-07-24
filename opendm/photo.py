@@ -321,7 +321,8 @@ class ODM_Photo:
                     ])
                     
                     self.set_attr_from_xmp_tag('horizontal_irradiance', xtags, [
-                        'Camera:HorizontalIrradiance'
+                        'Camera:HorizontalIrradiance',
+                        'DLS:HorizontalIrradiance' # Micasense DLS2
                     ], float)
 
                     self.set_attr_from_xmp_tag('irradiance_scale_to_si', xtags, [
@@ -335,6 +336,7 @@ class ODM_Photo:
                     self.set_attr_from_xmp_tag('spectral_irradiance', xtags, [
                         'Camera:SpectralIrradiance',
                         'Camera:Irradiance',
+                        'DLS:SpectralIrradiance' # Micasense DLS2
                     ], float)
 
                     self.set_attr_from_xmp_tag('capture_uuid', xtags, [
@@ -658,9 +660,15 @@ class ODM_Photo:
 
     def get_horizontal_irradiance(self):
         if self.horizontal_irradiance is not None:
-            scale = 1.0 # Assumed
             if self.irradiance_scale_to_si is not None:
                 scale = self.irradiance_scale_to_si
+            elif self.camera_make == 'MicaSense':
+                # Micasense DLS2 but the metadata is missing the scale, assume 0.01
+                # see https://github.com/micasense/imageprocessing/issues/47
+                scale = 0.01
+            else:
+                # assume 1.0
+                scale = 1.0
             
             return self.horizontal_irradiance * scale
     
@@ -672,9 +680,15 @@ class ODM_Photo:
             # then sun_sensor is not in physical units?
             return self.sun_sensor / 65535.0 # normalize uint16 (is this correct?)
         elif self.spectral_irradiance is not None:
-            scale = 1.0 # Assumed
             if self.irradiance_scale_to_si is not None:
                 scale = self.irradiance_scale_to_si
+            elif self.camera_make == 'MicaSense':
+                # Micasense DLS2 but the metadata is missing the scale, assume 0.01
+                # see https://github.com/micasense/imageprocessing/issues/47
+                scale = 0.01
+            else:
+                # assume 1.0
+                scale = 1.0
             
             return self.spectral_irradiance * scale
 
