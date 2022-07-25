@@ -39,6 +39,11 @@ def dn_to_temperature(photo, image, dataset_tree):
             image = image.astype("float32")
             # image -= (273.15 * 100.0) # Convert Kelvin to Celsius
             # image *= 0.01
+
+            # Cap pix values in range 0-65535
+            image[image < 0] = 0
+            image[image > 65535] = 65535
+
             return image
         elif photo.camera_make == "DJI" and photo.camera_model == "ZH20T":            
             filename, file_extension = os.path.splitext(photo.filename)
