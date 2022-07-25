@@ -416,9 +416,9 @@ class ODM_Photo:
                             self.camera_projection = camera_projection
 
                     # OPK
-                    self.set_attr_from_xmp_tag('yaw', xtags, ['@drone-dji:FlightYawDegree', '@Camera:Yaw', 'Camera:Yaw'], float)
-                    self.set_attr_from_xmp_tag('pitch', xtags, ['@drone-dji:GimbalPitchDegree', '@Camera:Pitch', 'Camera:Pitch'], float)
-                    self.set_attr_from_xmp_tag('roll', xtags, ['@drone-dji:GimbalRollDegree', '@Camera:Roll', 'Camera:Roll'], float)
+                    self.set_attr_from_xmp_tag('yaw', xtags, ['@drone-dji:FlightYawDegree', '@Camera:Yaw', 'Camera:Yaw', 'Camera:IrradianceYaw'], float)
+                    self.set_attr_from_xmp_tag('pitch', xtags, ['@drone-dji:GimbalPitchDegree', '@Camera:Pitch', 'Camera:Pitch', 'Camera:IrradiancePitch'], float)
+                    self.set_attr_from_xmp_tag('roll', xtags, ['@drone-dji:GimbalRollDegree', '@Camera:Roll', 'Camera:Roll', 'Camera:IrradianceRoll'], float)
 
                     # Normalize YPR conventions (assuming nadir camera)
                     # Yaw: 0 --> top of image points north
