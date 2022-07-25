@@ -117,10 +117,8 @@ def dn_to_reflectance(photo, image, use_sun_sensor=True):
     
     if photo.camera_make == 'MicaSense':
         # Cap in range 0-65535
-        if reflectance < 0:
-            reflectance = 0
-        if reflectance > 65535:
-            reflectance = 65535
+        reflectance[reflectance < 0] = 0
+        reflectance[reflectance > 65535] = 65535
 
     return reflectance
 
