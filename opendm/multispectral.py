@@ -110,9 +110,9 @@ def vignette_map(photo):
 
     return None, None, None
 
-def dn_to_reflectance(photo, image, use_sun_sensor=True):
+def dn_to_reflectance(photo, image, band_irradiance, use_sun_sensor=True):
     radiance = dn_to_radiance(photo, image)
-    irradiance = compute_irradiance(photo, use_sun_sensor=use_sun_sensor)
+    irradiance = band_irradiance if band_irradiance is not None else compute_irradiance(photo, use_sun_sensor=use_sun_sensor)
     reflectance = radiance * math.pi / irradiance
 
     return reflectance
@@ -124,8 +124,7 @@ def compute_irradiance(photo, use_sun_sensor=True):
 
     # Some cameras (e.g. Micasense with DSL2 sensor) store the value in metadata
     hirradiance = photo.get_horizontal_irradiance()
-    if hirradiance is not None:
-        log.ODM_WARNING("Horizontal irradiance for %s: %s" % (photo.filename, hirradiance))
+    if hirradiance is not None:        
         return hirradiance
 
     # TODO: support for calibration panels
