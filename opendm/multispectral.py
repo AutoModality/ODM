@@ -54,7 +54,7 @@ def dn_to_radiance(photo, image):
 
     # Normalize DN to 0 - 1.0
     bit_depth_max = photo.get_bit_depth_max()
-    if bit_depth_max and photo.camera_make not in ['MicaSense']:
+    if bit_depth_max:
         image /= bit_depth_max
 
     if V is not None:
@@ -114,11 +114,6 @@ def dn_to_reflectance(photo, image, use_sun_sensor=True):
     radiance = dn_to_radiance(photo, image)
     irradiance = compute_irradiance(photo, use_sun_sensor=use_sun_sensor)
     reflectance = radiance * math.pi / irradiance
-    
-    if photo.camera_make == 'MicaSense':
-        # Cap in range 0-65535
-        reflectance[reflectance < 0] = 0
-        reflectance[reflectance > 65535] = 65535
 
     return reflectance
 
