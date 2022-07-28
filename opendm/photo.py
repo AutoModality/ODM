@@ -109,12 +109,14 @@ class ODM_Photo:
         # Multi-band fields
         self.band_name = 'RGB'
         self.band_index = 0
-        self.capture_uuid = None # DJI only
+        self.capture_uuid = None
 
         # Multi-spectral fields
         self.fnumber = None
         self.radiometric_calibration = None
         self.black_level = None
+        self.gain = None
+        self.gain_adjustment = None
 
         # Capture info
         self.exposure_time = None
@@ -145,6 +147,10 @@ class ODM_Photo:
         self.speed_x = None
         self.speed_y = None
         self.speed_z = None
+
+        # Original image width/height at capture time (before possible resizes)
+        self.exif_width = None
+        self.exif_height = None
 
         # self.center_wavelength = None
         # self.bandwidth = None
@@ -239,7 +245,9 @@ class ODM_Photo:
                     self.black_level = self.list_values(tags['Image Tag 0xC61A'])
                 elif 'BlackLevel' in tags:
                     self.black_level = self.list_values(tags['BlackLevel'])
-                
+                elif 'Image BlackLevel' in tags:
+                    self.black_level = self.list_values(tags['Image BlackLevel'])
+
                 if 'EXIF ExposureTime' in tags:
                     self.exposure_time = self.float_value(tags['EXIF ExposureTime'])
 
@@ -252,10 +260,10 @@ class ODM_Photo:
                     self.iso_speed = self.int_value(tags['EXIF PhotographicSensitivity'])
                 elif 'EXIF ISOSpeedRatings' in tags:
                     self.iso_speed = self.int_value(tags['EXIF ISOSpeedRatings'])
-                    
-
+                
                 if 'Image BitsPerSample' in tags:
                     self.bits_per_sample = self.int_value(tags['Image BitsPerSample'])
+
                 if 'EXIF DateTimeOriginal' in tags:
                     str_time = tags['EXIF DateTimeOriginal'].values
                     utc_time = datetime.strptime(str_time, "%Y:%m:%d %H:%M:%S")
@@ -281,6 +289,11 @@ class ODM_Photo:
                     self.speed_y = self.float_value(tags['MakerNote SpeedY'])
                     self.speed_z = self.float_value(tags['MakerNote SpeedZ'])
 
+                if 'EXIF ExifImageWidth' in tags and \
+                   'EXIF ExifImageLength' in tags:
+                   self.exif_width = self.int_value(tags['EXIF ExifImageWidth'])
+                   self.exif_height = self.int_value(tags['EXIF ExifImageLength'])
+                
             except Exception as e:
                 log.ODM_WARNING("Cannot read extended EXIF tags for %s: %s" % (self.filename, str(e)))
 
@@ -344,6 +357,14 @@ class ODM_Photo:
                         'MicaSense:CaptureId', # MicaSense Altum
                         '@Camera:ImageUniqueID', # sentera 6x
                     ])
+
+                    self.set_attr_from_xmp_tag('gain', xtags, [
+                        '@drone-dji:SensorGain'
+                    ], float)
+
+                    self.set_attr_from_xmp_tag('gain_adjustment', xtags, [
+                        '@drone-dji:SensorGainAdjustment'
+                    ], float)
 
                     # Camera make / model for some cameras is stored in the XMP
                     if self.camera_make == '':
@@ -619,7 +640,7 @@ class ODM_Photo:
             if len(parts) == 3:
                 return list(map(float, parts))
 
-        return [None, None, None]                
+        return [None, None, None]
     
     def get_dark_level(self):
         if self.black_level:
@@ -627,8 +648,10 @@ class ODM_Photo:
             return levels.mean()
 
     def get_gain(self):
-        #(gain = ISO/100)
-        if self.iso_speed:
+        if self.gain is not None:
+            return self.gain
+        elif self.iso_speed:
+            #(gain = ISO/100)
             return self.iso_speed / 100.0
 
     def get_vignetting_center(self):
@@ -647,6 +670,7 @@ class ODM_Photo:
                 # Different camera vendors seem to use different ordering for the coefficients
                 if self.camera_make != "Sentera":
                     coeffs.reverse()
+
                 return coeffs
 
     def get_utc_time(self):
@@ -671,6 +695,9 @@ class ODM_Photo:
                 scale = 1.0
             
             return self.horizontal_irradiance * scale
+        elif self.camera_make == "DJI" and self.spectral_irradiance is not None:
+            # Phantom 4 Multispectral saves this value in @drone-dji:Irradiance
+            return self.spectral_irradiance
     
     def get_sun_sensor(self):
         if self.sun_sensor is not None:
@@ -700,6 +727,11 @@ class ODM_Photo:
     def get_bit_depth_max(self):
         if self.bits_per_sample:
             return float(2 ** self.bits_per_sample)
+        else:
+            # If it's a JPEG, this must be 256
+            _, ext = os.path.splitext(self.filename)
+            if ext.lower() in [".jpeg", ".jpg"]:
+                return 256.0
 
         return None
 
@@ -736,6 +768,9 @@ class ODM_Photo:
         if(self.camera_make == "DJI" and self.camera_model == "ZH20T" and self.width == 640 and self.height == 512):
             return True
         return self.band_name.upper() in ["LWIR"] # TODO: more?
+    
+    def is_rgb(self):
+        return self.band_name.upper() in ["RGB", "REDGREENBLUE"]
 
     def camera_id(self):
         return " ".join(
@@ -796,7 +831,7 @@ class ODM_Photo:
             d['speed'] = [self.speed_y, self.speed_x, self.speed_z]
         
         if rolling_shutter:
-            d['rolling_shutter'] = get_rolling_shutter_readout(self.camera_make, self.camera_model, rolling_shutter_readout)
+            d['rolling_shutter'] = get_rolling_shutter_readout(self, rolling_shutter_readout)
         
         return d
 
@@ -871,3 +906,15 @@ class ODM_Photo:
             self.omega = math.degrees(math.atan2(-ceb[1][2], ceb[2][2]))
             self.phi = math.degrees(math.asin(ceb[0][2]))
             self.kappa = math.degrees(math.atan2(-ceb[0][1], ceb[0][0]))
+
+    def get_capture_megapixels(self):
+        if self.exif_width is not None and self.exif_height is not None:
+            # Accurate so long as resizing / postprocess software
+            # did not fiddle with the tags
+            return self.exif_width * self.exif_height / 1e6
+        elif self.width is not None and self.height is not None:
+            # Fallback, might not be accurate since the image
+            # could have been resized
+            return self.width * self.height / 1e6
+        else:
+            return 0.0

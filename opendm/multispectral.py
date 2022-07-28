@@ -36,6 +36,7 @@ def dn_to_radiance(photo, image):
 
     exposure_time = photo.exposure_time
     gain = photo.get_gain()
+    gain_adjustment = photo.gain_adjustment
     photometric_exp = photo.get_photometric_exposure()
 
     if a1 is None and photometric_exp is None:
@@ -56,6 +57,8 @@ def dn_to_radiance(photo, image):
     bit_depth_max = photo.get_bit_depth_max()
     if bit_depth_max:
         image /= bit_depth_max
+    else:
+        log.ODM_WARNING("Cannot normalize DN for %s, bit depth is missing" % photo.filename)
 
     if V is not None:
         # vignette correction
@@ -79,6 +82,9 @@ def dn_to_radiance(photo, image):
         image /= (gain * exposure_time)
 
     image *= a1
+
+    if gain_adjustment is not None:
+        image *= gain_adjustment
 
     return image
 
@@ -104,8 +110,12 @@ def vignette_map(photo):
 
         # compute the vignette polynomial for each distance - we divide by the polynomial so that the
         # corrected image is image_corrected = image_original * vignetteCorrection
+        vignette = np.polyval(vignette_poly, r)
 
-        vignette = 1.0 / np.polyval(vignette_poly, r)
+        # DJI is special apparently
+        if photo.camera_make != "DJI":
+            vignette = 1.0 / vignette
+
         return vignette, x, y
 
     return None, None, None
@@ -122,9 +132,9 @@ def compute_irradiance(photo, use_sun_sensor=True):
     if photo.is_thermal():
         return 1.0
 
-    # Some cameras (e.g. Micasense with DSL2 sensor) store the value in metadata
+    # Some cameras (e.g. Micasense and DJI) store the value in metadata
     hirradiance = photo.get_horizontal_irradiance()
-    if hirradiance is not None:        
+    if hirradiance is not None:
         return hirradiance
 
     # TODO: support for calibration panels

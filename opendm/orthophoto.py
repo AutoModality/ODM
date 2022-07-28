@@ -67,7 +67,7 @@ def generate_png(orthophoto_file, output_file=None, outsize=None):
                 bandparam = "-b %s -b %s -b %s -a_nodata 0" % (red, green, blue)
         except:
             bandparam = "-b 1 -b 2 -b 3 -a_nodata 0"
-        
+
         scaleparam = "-scale 0 0.5 0 255"
 
     elif gtif.RasterCount > 0 and gtif.RasterCount <= 2: # graysacle
