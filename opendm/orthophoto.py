@@ -44,9 +44,10 @@ def generate_png(orthophoto_file, output_file=None, outsize=None):
 
     # See if we need to select top three bands
     bandparam = ""
+    scaleparam = ""
 
     gtif = gdal.Open(orthophoto_file)
-    if gtif.RasterCount > 4:
+    if gtif.RasterCount > 4: # multispectral
         bands = []
         for idx in range(1, gtif.RasterCount+1):
             bands.append(gtif.GetRasterBand(idx).GetColorInterpretation())
@@ -56,6 +57,9 @@ def generate_png(orthophoto_file, output_file=None, outsize=None):
             red = bands.get(gdal.GCI_RedBand)
             green = bands.get(gdal.GCI_GreenBand)
             blue = bands.get(gdal.GCI_BlueBand)
+            if red is None or green is None or blue is None:
+                raise Exception("Cannot find RGB bands")
+
             alpha = bands.get(gdal.GCI_AlphaBand)
             if alpha is not None:
                 bandparam = "-b %s -b %s -b %s -b %s -a_nodata 0" % (red, green, blue, alpha)
@@ -63,16 +67,25 @@ def generate_png(orthophoto_file, output_file=None, outsize=None):
                 bandparam = "-b %s -b %s -b %s -a_nodata 0" % (red, green, blue)
         except:
             bandparam = "-b 1 -b 2 -b 3 -a_nodata 0"
+        
+        scaleparam = "-scale 0 0.5 0 255"
+
+    elif gtif.RasterCount > 0 and gtif.RasterCount <= 2: # graysacle
+        band1 = gtif.GetRasterBand(1)
+        band1.ComputeStatistics(0)
+        bandparam = "-a_nodata 0"
+        scaleparam = "-scale %s %s 0 255" % (band1.GetMinimum(), band1.GetMaximum())
+
     gtif = None
 
     osparam = ""
     if outsize is not None:
-        osparam = "-outsize %s 0 -ot Byte -scale 0 0.5 0 255" % outsize
+        osparam = "-outsize %s 0 -ot Byte" % outsize
     else:
-        osparam = "-outsize %s%% %s%% ot Byte -scale 0 0.5 0 255" % (10, 10)
+        osparam = "-outsize %s%% %s%% -ot Byte" % (10, 10)
 
-    system.run('gdal_translate -of png "%s" "%s" %s %s '
-               '--config GDAL_CACHEMAX %s%% ' % (orthophoto_file, output_file, osparam, bandparam, get_max_memory()))
+    system.run('gdal_translate -of png "%s" "%s" %s %s %s '
+               '--config GDAL_CACHEMAX %s%% ' % (orthophoto_file, output_file, osparam, bandparam, scaleparam, get_max_memory()))
 
 def generate_kmz(orthophoto_file, output_file=None, outsize=None):
     if output_file is None:
