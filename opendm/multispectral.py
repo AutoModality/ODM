@@ -122,7 +122,12 @@ def vignette_map(photo):
 
 def dn_to_reflectance(photo, image, band_irradiance, use_sun_sensor=True):
     radiance = dn_to_radiance(photo, image)
-    irradiance = band_irradiance if band_irradiance is not None else compute_irradiance(photo, use_sun_sensor=use_sun_sensor)
+
+    if band_irradiance is not None and use_sun_sensor is not True:
+        irradiance = band_irradiance
+    else:
+        irradiance = compute_irradiance(photo, use_sun_sensor=use_sun_sensor)
+
     reflectance = radiance * math.pi / irradiance
 
     return reflectance
