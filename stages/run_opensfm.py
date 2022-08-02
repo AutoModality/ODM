@@ -94,14 +94,21 @@ class ODMOpenSfMStage(types.ODM_Stage):
 
         # Undistorted images will be used for texturing / MVS
 
-        alignment_info = None
         primary_band_name = None
+        irradiance_info = None
+        alignment_info = None
         largest_photo = None
         undistort_pipeline = []
 
         def undistort_callback(shot_id, image):
-            for func in undistort_pipeline:
-                image = func(shot_id, image)
+            # for func in undistort_pipeline:
+            #    image = func(shot_id, image)
+            if reconstruction.multi_camera:
+                image = resize_thermal_images(shot_id, image)
+                if args.radiometric_calibration != "none":
+                    image = radiometric_calibrate(shot_id, image)
+                image = align_to_primary_band(shot_id, image)
+
             return image
 
         def resize_thermal_images(shot_id, image):
@@ -117,18 +124,11 @@ class ODMOpenSfMStage(types.ODM_Stage):
             if photo.is_thermal():
                 return thermal.dn_to_temperature(photo, image, tree.dataset_raw)
             else:
-                irradiances = []
-                for p in multispectral.get_photos_by_band(reconstruction.multi_camera, photo.band_name):
-                    hirradiance = p.get_horizontal_irradiance()
-                    if hirradiance is not None:
-                        irradiances.append(hirradiance)                    
-                if len(irradiances) > 0:
-                    band_irradiance_mean = sum(irradiances) / len(irradiances)
+                band_irradiance_mean = irradiance_info.get(photo.band_name)
 
                 log.ODM_INFO("Horizontal irradiance for %s: %s (mean: %s)" % (photo.filename, photo.get_horizontal_irradiance(), band_irradiance_mean))    
 
                 return multispectral.dn_to_reflectance(photo, image, band_irradiance_mean, use_sun_sensor=args.radiometric_calibration=="camera+sun")
-
 
         def align_to_primary_band(shot_id, image):
             photo = reconstruction.get_photo(shot_id)
@@ -154,11 +154,12 @@ class ODMOpenSfMStage(types.ODM_Stage):
 
         if reconstruction.multi_camera:
             largest_photo = find_largest_photo(photos)
+            irradiance_info = multispectral.compute_band_irradiances(reconstruction.multi_camera)
             undistort_pipeline.append(resize_thermal_images)
 
         if args.radiometric_calibration != "none":
             undistort_pipeline.append(radiometric_calibrate)
-        
+
         image_list_override = None
 
         if reconstruction.multi_camera:
