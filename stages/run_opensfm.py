@@ -125,9 +125,7 @@ class ODMOpenSfMStage(types.ODM_Stage):
                 return thermal.dn_to_temperature(photo, image, tree.dataset_raw)
             else:
                 band_irradiance_mean = irradiance_info.get(photo.band_name)
-
-                log.ODM_INFO("Horizontal irradiance for %s: %s (mean: %s)" % (photo.filename, photo.get_horizontal_irradiance(), band_irradiance_mean))    
-
+                log.ODM_INFO("Horizontal irradiance for %s: %s (mean: %s)" % (photo.filename, photo.get_horizontal_irradiance(), band_irradiance_mean))
                 return multispectral.dn_to_reflectance(photo, image, band_irradiance_mean, use_sun_sensor=args.radiometric_calibration=="camera+sun")
 
         def align_to_primary_band(shot_id, image):
@@ -181,7 +179,10 @@ class ODMOpenSfMStage(types.ODM_Stage):
                 s2p, p2s = multispectral.compute_band_maps(reconstruction.multi_camera, primary_band_name)
                 
                 if not args.skip_band_alignment:
-                    alignment_info = multispectral.compute_alignment_matrices(reconstruction.multi_camera, primary_band_name, tree.dataset_raw, s2p, p2s, max_concurrency=args.max_concurrency)
+                    alignment_info = multispectral.compute_alignment_matrices(reconstruction.multi_camera, primary_band_name, tree.dataset_raw, s2p, p2s, 
+                                                                              max_concurrency=args.max_concurrency,
+                                                                              irradiance_by_hand=irradiance_info,
+                                                                              use_sun_sensor=args.radiometric_calibration=="camera+sun")
                 else:
                     log.ODM_WARNING("Skipping band alignment")
                     alignment_info = {}

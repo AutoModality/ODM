@@ -177,6 +177,15 @@ def compute_irradiance(photo, use_sun_sensor=True):
 
     return 1.0
 
+def radiometric_calibrate(photo, image, irradiance_by_hand=None, use_sun_sensor=True):
+    if irradiance_by_hand is not None:
+        band_irradiance_mean = irradiance_by_hand.get(photo.band_name)
+        
+    if not photo.is_thermal():
+        return dn_to_reflectance(photo, image, band_irradiance_mean, use_sun_sensor)
+    else:
+        return image
+
 def get_photos_by_band(multi_camera, user_band_name):
     band_name = get_primary_band_name(multi_camera, user_band_name)
 
@@ -308,7 +317,7 @@ def compute_band_irradiances(multi_camera):
 
     return band_irradiance_info
 
-def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p, p2s, max_concurrency=1, max_samples=30):
+def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p, p2s, max_concurrency=1, max_samples=30, irradiance_by_hand=None, use_sun_sensor=True):
     log.ODM_INFO("Computing band alignment")
 
     use_local_warp_matrix = False
@@ -320,7 +329,8 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
         if band['name'] != primary_band_name:
             matrices_samples = []
 
-            def parallel_compute_homography(p):
+            def parallel_compute_homography(photo):
+                filename = photo.filename
                 try:
                     # Caculate the best warp matrix using a few samples in favor of performance
                     if use_local_warp_matrix is not True and len(matrices_samples) >= max_samples:
@@ -328,30 +338,34 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
                         return
 
                     # Find good matrix candidates for alignment
-                    primary_band_photo = s2p.get(p['filename'])
+                    primary_band_photo = s2p.get(filename)
                     if primary_band_photo is None:
-                        log.ODM_WARNING("Cannot find primary band photo for %s" % p['filename'])
+                        log.ODM_WARNING("Cannot find primary band photo for %s" % filename)
                         return
 
-                    warp_matrix, dimension, algo = compute_homography(os.path.join(images_path, p['filename']),
-                                                                os.path.join(images_path, primary_band_photo.filename))
+                    warp_matrix, dimension, algo = compute_homography(os.path.join(images_path, filename),
+                                                                      os.path.join(images_path, primary_band_photo.filename),
+                                                                      photo,
+                                                                      primary_band_photo,
+                                                                      irradiance_by_hand,
+                                                                      use_sun_sensor)
 
                     if warp_matrix is not None:
-                        log.ODM_INFO("%s --> %s good match" % (p['filename'], primary_band_photo.filename))
+                        log.ODM_INFO("%s --> %s good match" % (filename, primary_band_photo.filename))
 
                         matrices_samples.append({
-                            'filename': p['filename'], # assume file name is unique
+                            'filename': filename,
                             'warp_matrix': warp_matrix,
                             'eigvals': np.linalg.eigvals(warp_matrix),
                             'dimension': dimension,
                             'algo': algo
                         })
                     else:
-                        log.ODM_INFO("%s --> %s cannot be matched" % (p['filename'], primary_band_photo.filename))
+                        log.ODM_INFO("%s --> %s cannot be matched" % (filename, primary_band_photo.filename))
                 except Exception as e:
-                    log.ODM_WARNING("Failed to compute homography for %s: %s" % (p['filename'], str(e)))
+                    log.ODM_WARNING("Failed to compute homography for %s: %s" % (filename, str(e)))
 
-            parallel_map(parallel_compute_homography, [{'filename': p.filename} for p in band['photos']], max_concurrency, single_thread_fallback=False)
+            parallel_map(parallel_compute_homography, band['photos'], max_concurrency, single_thread_fallback=False)
 
             # Find the matrix that has the most common eigvals
             # among all matrices. That should be the "best" alignment.
@@ -398,10 +412,11 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
 
     return alignment_info
 
-def compute_homography(image_filename, align_image_filename):
+def compute_homography(image_filename, align_image_filename, photo, align_photo, irradiance_by_hand=None, use_sun_sensor=True):
     try:
         # Convert images to grayscale if needed
         image = imread(image_filename, unchanged=True, anydepth=True)
+        image = radiometric_calibrate(photo, image, irradiance_by_hand, use_sun_sensor)
         if image.shape[2] == 3:
             image_gray = to_8bit(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))
         else:
@@ -412,6 +427,7 @@ def compute_homography(image_filename, align_image_filename):
             log.ODM_WARNING("Small image for band alignment (%sx%s), this might be tough to compute." % (image_gray.shape[1], image_gray.shape[0]))
 
         align_image = imread(align_image_filename, unchanged=True, anydepth=True)
+        align_image = radiometric_calibrate(align_photo, align_image, irradiance_by_hand, use_sun_sensor)
         if align_image.shape[2] == 3:
             align_image_gray = to_8bit(cv2.cvtColor(align_image, cv2.COLOR_BGR2GRAY))
         else:
