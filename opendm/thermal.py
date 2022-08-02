@@ -57,8 +57,9 @@ def dn_to_temperature(photo, image, dataset_tree):
             return image
         else:
             log.ODM_WARNING("Unsupported camera [%s %s], thermal band will have digital numbers." % (photo.camera_make, photo.camera_model))
+            return image
     else:
-        image = image.astype("float32")
+        # image = image.astype("float32")
         log.ODM_WARNING("Tried to radiometrically calibrate a non-thermal image with temperature values (%s)" % photo.filename)
         return image
 

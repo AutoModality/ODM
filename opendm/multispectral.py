@@ -289,6 +289,25 @@ def compute_band_maps(multi_camera, primary_band):
 
         return s2p, p2s
 
+def compute_band_irradiances(multi_camera):
+    log.ODM_INFO("Computing band irradiance")
+
+    band_irradiance_info = {}
+    for band in multi_camera:
+        irradiances = []
+        band_irradiance_mean = 1.0
+        for p in get_photos_by_band(multi_camera, band['name']):
+            hirradiance = p.get_horizontal_irradiance()
+            if hirradiance is not None:
+                irradiances.append(hirradiance)                    
+        if len(irradiances) > 0:
+            band_irradiance_mean = sum(irradiances) / len(irradiances)
+
+        band_irradiance_info[band['name']] = band_irradiance_mean
+        log.ODM_INFO("%s band's mean irradiance: %s" % (band['name'], band_irradiance_mean))
+
+    return band_irradiance_info
+
 def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p, p2s, max_concurrency=1, max_samples=30):
     log.ODM_INFO("Computing band alignment")
 
