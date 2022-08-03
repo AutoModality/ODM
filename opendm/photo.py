@@ -189,6 +189,7 @@ class ODM_Photo:
         # Misc SFM
         self.camera_projection = 'brown'
         self.focal_ratio = 0.85
+        self.focal_length = None
 
         # parse values from metadata
         self.parse_exif_values(path_file)
@@ -326,6 +327,9 @@ class ODM_Photo:
 
                 if 'EXIF FocalPlaneYResolution' in tags:
                    self.focal_plane_resolution_y = self.float_value(tags['EXIF FocalPlaneYResolution'])
+
+                if 'EXIF FocalLength' in tags:
+                   self.focal_length = self.float_value(tags['EXIF FocalLength'])
                 
             except Exception as e:
                 log.ODM_WARNING("Cannot read extended EXIF tags for %s: %s" % (self.filename, str(e)))
@@ -377,6 +381,10 @@ class ODM_Photo:
                     self.set_attr_from_xmp_tag('distortion_parameters', xtags, [
                         'Camera:PerspectiveDistortion' # Micasense Altum and RedEdge-MX
                     ])
+
+                    self.set_attr_from_xmp_tag('focal_length', xtags, [
+                        'Camera:PerspectiveFocalLength' # Micasense Altum and RedEdge-MX
+                    ], float)
                     
                     self.set_attr_from_xmp_tag('horizontal_irradiance', xtags, [
                         'Camera:HorizontalIrradiance',
@@ -519,7 +527,10 @@ class ODM_Photo:
 
     def compute_focal(self, tags, xtags):
         try:
-            self.focal_ratio = self.extract_focal(self.camera_make, self.camera_model, tags, xtags)
+            _focal_ratio, _focal_length = self.extract_focal(self.camera_make, self.camera_model, tags, xtags)            
+            self.focal_ratio = _focal_ratio
+            if self.focal_length is None:
+                self.focal_length = _focal_length
         except (IndexError, ValueError) as e:
             log.ODM_WARNING("Cannot extract focal ratio for %s: %s" % (self.filename, str(e)))
 
@@ -565,7 +576,7 @@ class ODM_Photo:
             else:
                 focal_ratio = 0.85
 
-        return focal_ratio
+        return focal_ratio, focal
 
     def set_attr_from_xmp_tag(self, attr, xmp_tags, tags, cast=None):
         v = self.get_xmp_tag(xmp_tags, tags)
@@ -1010,8 +1021,8 @@ class ODM_Photo:
 
         # set up camera matrix for cv2
         cam_mat = np.zeros((3, 3))
-        cam_mat[0, 0] = self.compute_focal() * focal_plane_resolution[0]
-        cam_mat[1, 1] = self.compute_focal() * focal_plane_resolution[1]
+        cam_mat[0, 0] = self.focal_length * focal_plane_resolution[0]
+        cam_mat[1, 1] = self.focal_length * focal_plane_resolution[1]
         cam_mat[2, 2] = 1.0
         cam_mat[0, 2] = center_x
         cam_mat[1, 2] = center_y
