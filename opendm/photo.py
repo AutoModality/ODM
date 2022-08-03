@@ -1,6 +1,7 @@
 import logging
 import re
 import os
+import cv2
 import math
 
 import exifread
@@ -79,6 +80,27 @@ def get_mm_per_unit(resolution_unit):
         log.ODM_WARNING("Unknown EXIF resolution unit value: {}".format(resolution_unit))
         return None
 
+# convert euler angles to a rotation matrix
+def rotations_degrees_to_rotation_matrix(rotation_degrees):
+    cx = np.cos(np.deg2rad(rotation_degrees[0]))
+    cy = np.cos(np.deg2rad(rotation_degrees[1]))
+    cz = np.cos(np.deg2rad(rotation_degrees[2]))
+    sx = np.sin(np.deg2rad(rotation_degrees[0]))
+    sy = np.sin(np.deg2rad(rotation_degrees[1]))
+    sz = np.sin(np.deg2rad(rotation_degrees[2]))
+
+    Rx = np.mat([  1,  0,  0,
+                    0, cx,-sx,
+                    0, sx, cx]).reshape(3,3)
+    Ry = np.mat([ cy,  0, sy,
+                    0,  1,  0,
+                    -sy,  0, cy]).reshape(3,3)
+    Rz = np.mat([ cz,-sz,  0,
+                    sz, cz,  0,
+                    0,  0,  1]).reshape(3,3)
+    R = Rx*Ry*Rz
+    return R
+
 class PhotoCorruptedException(Exception):
     pass
 
@@ -109,6 +131,7 @@ class ODM_Photo:
         # Multi-band fields
         self.band_name = 'RGB'
         self.band_index = 0
+        self.rig_relatives = None
         self.capture_uuid = None
 
         # Multi-spectral fields
@@ -124,6 +147,10 @@ class ODM_Photo:
         self.bits_per_sample = None
         self.vignetting_center = None
         self.vignetting_polynomial = None
+        self.distortion_parameters = None
+        self.principal_point = None
+        self.focal_plane_resolution_x = None
+        self.focal_plane_resolution_y = None
         self.spectral_irradiance = None
         self.horizontal_irradiance = None
         self.irradiance_scale_to_si = None
@@ -293,6 +320,12 @@ class ODM_Photo:
                    'EXIF ExifImageLength' in tags:
                    self.exif_width = self.int_value(tags['EXIF ExifImageWidth'])
                    self.exif_height = self.int_value(tags['EXIF ExifImageLength'])
+
+                if 'EXIF FocalPlaneXResolution' in tags:
+                   self.focal_plane_resolution_x = self.float_value(tags['EXIF FocalPlaneXResolution'])
+
+                if 'EXIF FocalPlaneYResolution' in tags:
+                   self.focal_plane_resolution_y = self.float_value(tags['EXIF FocalPlaneYResolution'])
                 
             except Exception as e:
                 log.ODM_WARNING("Cannot read extended EXIF tags for %s: %s" % (self.filename, str(e)))
@@ -319,6 +352,10 @@ class ODM_Photo:
                         'Camera:RigCameraIndex', # MicaSense Altum
                     ])
 
+                    self.set_attr_from_xmp_tag('rig_relatives', xtags, [
+                        'Camera:RigRelatives' # MicaSense Altum and RedEdge-MX
+                    ])
+
                     self.set_attr_from_xmp_tag('radiometric_calibration', xtags, [
                         'MicaSense:RadiometricCalibration',
                     ])
@@ -331,6 +368,14 @@ class ODM_Photo:
                     self.set_attr_from_xmp_tag('vignetting_polynomial', xtags, [
                         'Camera:VignettingPolynomial',
                         'Sentera:VignettingPolynomial',
+                    ])
+
+                    self.set_attr_from_xmp_tag('principal_point', xtags, [
+                        'Camera:PrincipalPoint' # Micasense Altum and RedEdge-MX
+                    ])
+
+                    self.set_attr_from_xmp_tag('distortion_parameters', xtags, [
+                        'Camera:PerspectiveDistortion' # Micasense Altum and RedEdge-MX
                     ])
                     
                     self.set_attr_from_xmp_tag('horizontal_irradiance', xtags, [
@@ -634,6 +679,9 @@ class ODM_Photo:
                 pass
         return val 
 
+    def get_size(self):
+        return self.width, self.height
+
     def get_radiometric_calibration(self):
         if isinstance(self.radiometric_calibration, str):
             parts = self.radiometric_calibration.split(" ")
@@ -672,6 +720,25 @@ class ODM_Photo:
                     coeffs.reverse()
 
                 return coeffs
+
+    def get_principal_point(self):
+        if self.principal_point is not None:
+            parts = self.principal_point.split(",")
+            if len(parts) > 0:
+                return list(map(float, parts))
+        return None
+
+    def get_distortion_parameters(self):
+        if self.distortion_parameters is not None:
+            parts = self.distortion_parameters.split(" ")
+            if len(parts) > 0:
+                return list(map(float, parts))
+        return None
+
+    def get_focal_plane_resolution(self):
+        if self.focal_plane_resolution_x is not None and self.focal_plane_resolution_y is not None:
+            return self.focal_plane_resolution_x, self.focal_plane_resolution_y
+        return None
 
     def get_utc_time(self):
         if self.utc_time:
@@ -733,6 +800,13 @@ class ODM_Photo:
             if ext.lower() in [".jpeg", ".jpg"]:
                 return 256.0
 
+        return None
+
+    def get_rig_relatives(self):
+        if self.rig_relatives is not None:
+            parts = self.rig_relatives.split(",")
+            if len(parts) > 0:
+                return list(map(float, parts))
         return None
 
     def get_capture_id(self):
@@ -918,3 +992,61 @@ class ODM_Photo:
             return self.width * self.height / 1e6
         else:
             return 0.0
+
+
+    ################################################################################
+    # The following codes are for MicaSense thermal band alignment
+    ################################################################################    
+    def principal_point_px(self):
+        principal_point = self.get_principal_point()
+        focal_plane_resolution = self.get_focal_plane_resolution()
+        center_x = principal_point[0] * focal_plane_resolution[0]
+        center_y = principal_point[1] * focal_plane_resolution[1]
+        return (center_x, center_y)
+
+    def cv2_camera_matrix(self):
+        center_x, center_y = self.principal_point_px()
+        focal_plane_resolution = self.get_focal_plane_resolution()
+
+        # set up camera matrix for cv2
+        cam_mat = np.zeros((3, 3))
+        cam_mat[0, 0] = self.compute_focal() * focal_plane_resolution[0]
+        cam_mat[1, 1] = self.compute_focal() * focal_plane_resolution[1]
+        cam_mat[2, 2] = 1.0
+        cam_mat[0, 2] = center_x
+        cam_mat[1, 2] = center_y
+
+        return cam_mat
+    
+    def cv2_distortion_coeff(self):
+        return np.array(self.get_distortion_parameters())[[0, 1, 3, 4, 2]]
+
+    # get the homography that maps from this image to the reference image
+    def get_homography(self, ref, R=None, T=None):
+        if R is None:
+            R = rotations_degrees_to_rotation_matrix(self.get_rig_relatives())
+        if T is None:
+            T =np.zeros(3)
+        R_ref = rotations_degrees_to_rotation_matrix(ref.get_rig_relatives())
+        A = np.zeros((4,4))
+        A[0:3,0:3]=np.dot(R_ref.T,R)
+        A[0:3,3]=T
+        A[3,3]=1.
+        C, _ = cv2.getOptimalNewCameraMatrix(self.cv2_camera_matrix(),
+                                             self.cv2_distortion_coeff(),
+                                             self.get_size(),1)
+        Cr, _ = cv2.getOptimalNewCameraMatrix(ref.cv2_camera_matrix(),
+                                              ref.cv2_distortion_coeff(),
+                                              ref.get_size(),1)
+        CC = np.zeros((4,4))
+        CC[0:3,0:3] = C
+        CC[3,3]=1.
+        CCr = np.zeros((4,4))
+        CCr[0:3,0:3] = Cr
+        CCr[3,3]=1.
+
+        B = np.array(np.dot(CCr,np.dot(A,np.linalg.inv(CC))))
+        B[:,2]=B[:,2]-B[:,3]
+        B = B[0:3,0:3]
+        B = B/B[2,2]
+        return np.array(B)

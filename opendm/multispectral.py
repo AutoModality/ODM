@@ -328,6 +328,8 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
     for band in multi_camera:
         if band['name'] != primary_band_name:
             matrices_samples = []
+            if band['name'] == 'LWIR':
+                max_samples == len(band['photos'])
 
             def parallel_compute_homography(photo):
                 filename = photo.filename
@@ -475,12 +477,18 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
                 if result[0] is None:
                     algo = None
 
-        else: # ECC only for low resolution images
-            algo = 'ecc'
-            log.ODM_INFO("Using ECC (this might take a bit)")
-            result = compute_using(find_ecc_homography)
-            if result[0] is None:
-                algo = None
+        else: # for low resolution images
+            if photo.camera_make == 'MicaSense' and photo.band_name == 'LWIR':
+                algo = 'rig'
+                log.ODM_INFO("Using camera rig relative matrix")
+                result = find_rig_homography(photo, align_photo), (align_image_gray.shape[1], align_image_gray.shape[0])
+
+            else:
+                algo = 'ecc'
+                log.ODM_INFO("Using ECC (this might take a bit)")
+                result = compute_using(find_ecc_homography)
+                if result[0] is None:
+                    algo = None
 
         warp_matrix, dimension = result
         return warp_matrix, dimension, algo
@@ -562,7 +570,6 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
 
     return warp_matrix
 
-
 def find_features_homography(image_gray, align_image_gray, feature_retention=0.7, min_match_count=10):
 
     # Detect SIFT features and compute descriptors.
@@ -608,6 +615,13 @@ def find_features_homography(image_gray, align_image_gray, feature_retention=0.7
     # Find homography
     h, _ = cv2.findHomography(points_image, points_align_image, cv2.RANSAC)
     return h
+
+def find_rig_homography(photo, align_photo):
+    # warp_matrix = np.linalg.inv(photo.get_homography(align_photo))
+    # warp_matrix /= warp_matrix[2,2]
+    warp_matrix = photo.get_homography(align_photo)
+    log.ODM_INFO("Warp matrix for %s --> %s: %s" % (photo.filename, align_photo.filename, warp_matrix))
+    return warp_matrix
 
 def gradient(im, ksize=5):
     im = local_normalize(im)
