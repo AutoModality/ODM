@@ -177,12 +177,12 @@ def compute_irradiance(photo, use_sun_sensor=True):
 
     return 1.0
 
-def radiometric_calibrate(photo, image, irradiance_by_hand=None, use_sun_sensor=True):
+def radiometric_calibrate(photo, image, image_type='reflectance', irradiance_by_hand=None, use_sun_sensor=True):
     if irradiance_by_hand is not None:
         band_irradiance_mean = irradiance_by_hand.get(photo.band_name)
         
     if not photo.is_thermal():
-        return dn_to_reflectance(photo, image, band_irradiance_mean, use_sun_sensor)
+        return dn_to_reflectance(photo, image, band_irradiance_mean, use_sun_sensor) if image_type == 'reflectance' else dn_to_radiance(photo, image)
     else:
         return image
 
@@ -416,7 +416,7 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
     try:
         # Convert images to grayscale if needed
         image = imread(image_filename, unchanged=True, anydepth=True)
-        image = radiometric_calibrate(photo, image, irradiance_by_hand, use_sun_sensor)
+        image = radiometric_calibrate(photo, image, 'radiance', irradiance_by_hand, use_sun_sensor)
         if image.shape[2] == 3:
             image_gray = to_8bit(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))
         else:
@@ -427,7 +427,7 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
             log.ODM_WARNING("Small image for band alignment (%sx%s), this might be tough to compute." % (image_gray.shape[1], image_gray.shape[0]))
 
         align_image = imread(align_image_filename, unchanged=True, anydepth=True)
-        align_image = radiometric_calibrate(align_photo, align_image, irradiance_by_hand, use_sun_sensor)
+        align_image = radiometric_calibrate(align_photo, align_image, 'radiance', irradiance_by_hand, use_sun_sensor)
         if align_image.shape[2] == 3:
             align_image_gray = to_8bit(cv2.cvtColor(align_image, cv2.COLOR_BGR2GRAY))
         else:
