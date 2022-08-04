@@ -404,7 +404,8 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
                 alignment_info[band['name']] = matrices_all
 
                 if use_local_warp_matrix:
-                    log.ODM_INFO("%s band will be aligned using local warp matrices %s" % (band['name'], matrices_all))
+                    # log.ODM_INFO("%s band will be aligned using local warp matrices %s" % (band['name'], matrices_all))
+                    pass
                 else:
                     log.ODM_INFO("%s band will be aligned using global warp matrix %s (score: %s)" % (band['name'], best_candidate['warp_matrix'], best_candidate['score']))
             else:
@@ -423,8 +424,8 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
             image_gray = to_8bit(image[:,:,0])
 
         max_dim = max(image_gray.shape)
-        if max_dim <= 320:
-            log.ODM_WARNING("Small image for band alignment (%sx%s), this might be tough to compute." % (image_gray.shape[1], image_gray.shape[0]))
+        # if max_dim <= 320:
+        #    log.ODM_WARNING("Small image for band alignment (%sx%s), this might be tough to compute." % (image_gray.shape[1], image_gray.shape[0]))
 
         align_image = imread(align_image_filename, unchanged=True, anydepth=True)
         align_image = radiometric_calibrate(align_photo, align_image, 'radiance', irradiance_by_hand, use_sun_sensor)
@@ -478,7 +479,7 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
         else: # for low resolution images
             if photo.camera_make == 'MicaSense' and photo.band_name == 'LWIR':
                 algo = 'rig'
-                log.ODM_INFO("Using camera rig relative matrix")
+                log.ODM_INFO("Using camera rig relatives to compute warp matrix")
                 result = find_rig_homography(photo, align_photo), (align_image_gray.shape[1], align_image_gray.shape[0])
 
             else:
@@ -638,11 +639,11 @@ def local_normalize(im):
     return im
 
 
-def align_image(image, warp_matrix, dimension):
+def align_image(image, warp_matrix, dimension, interpolation_mode=cv2.INTER_LINEAR):
     if warp_matrix.shape == (3, 3):
-        return cv2.warpPerspective(image, warp_matrix, dimension, flags=cv2.INTER_LANCZOS4)
+        return cv2.warpPerspective(image, warp_matrix, dimension, flags=interpolation_mode)
     else:
-        return cv2.warpAffine(image, warp_matrix, dimension, flags=cv2.INTER_LANCZOS4)
+        return cv2.warpAffine(image, warp_matrix, dimension, flags=interpolation_mode)
 
 
 def to_8bit(image, force_normalize=False):
