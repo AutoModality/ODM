@@ -320,22 +320,20 @@ def compute_band_irradiances(multi_camera):
 def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p, p2s, max_concurrency=1, max_samples=30, irradiance_by_hand=None, use_sun_sensor=True):
     log.ODM_INFO("Computing band alignment")
 
-    use_local_warp_matrix = False
-
     alignment_info = {}
 
     # For each secondary band
     for band in multi_camera:
         if band['name'] != primary_band_name:
             matrices_samples = []
-            if band['name'] == 'LWIR':
-                max_samples == len(band['photos'])
+            max_samples == max_samples if band['name'] != 'LWIR' and max_samples < len(band['photos']) else len(band['photos'])
+            use_local_warp_matrix = False if band['name'] != 'LWIR' else True
 
             def parallel_compute_homography(photo):
                 filename = photo.filename
                 try:
                     # Caculate the best warp matrix using a few samples in favor of performance
-                    if use_local_warp_matrix is not True and len(matrices_samples) >= max_samples:
+                    if not use_local_warp_matrix and len(matrices_samples) >= max_samples:
                         # log.ODM_INFO("Got enough samples for %s (%s)" % (band['name'], max_samples))
                         return
 
@@ -642,9 +640,9 @@ def local_normalize(im):
 
 def align_image(image, warp_matrix, dimension):
     if warp_matrix.shape == (3, 3):
-        return cv2.warpPerspective(image, warp_matrix, dimension)
+        return cv2.warpPerspective(image, warp_matrix, dimension, flags=cv2.INTER_LANCZOS4)
     else:
-        return cv2.warpAffine(image, warp_matrix, dimension)
+        return cv2.warpAffine(image, warp_matrix, dimension, flags=cv2.INTER_LANCZOS4)
 
 
 def to_8bit(image, force_normalize=False):
