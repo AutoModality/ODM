@@ -146,7 +146,8 @@ class ODMOpenSfMStage(types.ODM_Stage):
             if ainfo_band is not None:
                 ainfo_shot = next((item for item in ainfo_band if item['filename'] == shot_id), None) # alignment_info is a dictionary but ainfo_band is a list
                 if ainfo_shot is not None:
-                    interpolation_mode = cv2.INTER_LANCZOS4 if photo.is_thermal() else cv2.INTER_LINEAR
+                    # interpolation_mode = cv2.INTER_LANCZOS4 if photo.is_thermal() else cv2.INTER_LINEAR
+                    interpolation_mode = cv2.INTER_LINEAR
                     return multispectral.align_image(image, ainfo_shot['warp_matrix'], ainfo_shot['dimension'], interpolation_mode)
                 else:
                     log.ODM_WARNING("Cannot align %s, no alignment matrix could be computed. Band alignment quality might be affected." % (shot_id))
@@ -163,8 +164,11 @@ class ODMOpenSfMStage(types.ODM_Stage):
                     image *= 32768
                 else:
                     image += 273.15
-                    image *= 100                
-
+                    image *= 100
+            
+            image = np.round(image)
+            image[image<0] = 0
+            image[image>65535] = 65535
             return image.astype(np.uint16)
 
         if reconstruction.multi_camera:
