@@ -619,7 +619,8 @@ def find_rig_homography(photo, align_photo):
     # warp_matrix = np.linalg.inv(photo.get_homography(align_photo))
     # warp_matrix /= warp_matrix[2,2]
     warp_matrix = photo.get_homography(align_photo)
-    log.ODM_INFO("Warp matrix for %s --> %s: %s" % (photo.filename, align_photo.filename, warp_matrix))
+    log.ODM_INFO("Warp matrix for %s --> %s: %s (focal length: %s mm, rig relatives: %s)" % 
+                 (photo.filename, align_photo.filename, warp_matrix, photo.focal_length, photo.get_rig_relatives()))
     return warp_matrix
 
 def gradient(im, ksize=5):
