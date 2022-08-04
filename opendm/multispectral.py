@@ -617,9 +617,9 @@ def find_features_homography(image_gray, align_image_gray, feature_retention=0.7
     return h
 
 def find_rig_homography(photo, align_photo):
-    warp_matrix = np.linalg.inv(photo.get_homography(align_photo))
-    warp_matrix /= warp_matrix[2,2]
-    # warp_matrix = photo.get_homography(align_photo)
+    # warp_matrix = np.linalg.inv(photo.get_homography(align_photo))
+    # warp_matrix /= warp_matrix[2,2]
+    warp_matrix = photo.get_homography(align_photo)
     log.ODM_INFO("Warp matrix for %s --> %s: %s" % (photo.filename, align_photo.filename, warp_matrix))
     return warp_matrix
 
