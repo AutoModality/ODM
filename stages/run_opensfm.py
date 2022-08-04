@@ -2,6 +2,7 @@ import sys
 import os
 import shutil
 import glob
+import numpy as np
 
 from opendm import log
 from opendm import io
@@ -108,6 +109,7 @@ class ODMOpenSfMStage(types.ODM_Stage):
                 if args.radiometric_calibration != "none":
                     image = radiometric_calibrate(shot_id, image)
                 image = align_to_primary_band(shot_id, image)
+                image = normalize_float_to_uint16(shot_id, image)
 
             return image
 
@@ -125,7 +127,7 @@ class ODMOpenSfMStage(types.ODM_Stage):
                 return thermal.dn_to_temperature(photo, image, tree.dataset_raw)
             else:
                 band_irradiance_mean = irradiance_info.get(photo.band_name)
-                log.ODM_INFO("Horizontal irradiance for %s: %s (mean: %s)" % (photo.filename, photo.get_horizontal_irradiance(), band_irradiance_mean))
+                # log.ODM_INFO("Horizontal irradiance for %s: %s (mean: %s)" % (photo.filename, photo.get_horizontal_irradiance(), band_irradiance_mean))
                 return multispectral.dn_to_reflectance(photo, image, band_irradiance_mean, use_sun_sensor=args.radiometric_calibration=="camera+sun")
 
         def align_to_primary_band(shot_id, image):
@@ -149,6 +151,19 @@ class ODMOpenSfMStage(types.ODM_Stage):
             else:
                 log.ODM_WARNING("Cannot align %s, no alignment matrix could be computed. Band alignment quality might be affected." % (shot_id))
                 return image
+
+        def normalize_float_to_uint16(shot_id, image):
+            photo = reconstruction.get_photo(shot_id)
+            if photo.camera_make == 'MicaSense':
+                if not photo.is_thermal():
+                    image[image<0] = 0
+                    image[image>2] = 2
+                    image *= 32768
+                else:
+                    image += 273.15
+                    image *= 100                
+
+            return image.astype(np.uint16)
 
         if reconstruction.multi_camera:
             largest_photo = find_largest_photo(photos)
