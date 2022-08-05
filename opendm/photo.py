@@ -1132,10 +1132,10 @@ class ODM_Photo:
         A[3,3]=1.
         C, _ = cv2.getOptimalNewCameraMatrix(self.cv2_camera_matrix(),
                                              self.cv2_distortion_coeff(),
-                                             self.get_size(),1)
+                                             self.get_size(),0)
         Cr, _ = cv2.getOptimalNewCameraMatrix(ref.cv2_camera_matrix(),
                                               ref.cv2_distortion_coeff(),
-                                              ref.get_size(),1)
+                                              ref.get_size(),0)
         CC = np.zeros((4,4))
         CC[0:3,0:3] = C
         CC[3,3]=1.
