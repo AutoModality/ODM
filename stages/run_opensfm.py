@@ -110,7 +110,7 @@ class ODMOpenSfMStage(types.ODM_Stage):
                 if args.radiometric_calibration != "none":
                     image = radiometric_calibrate(shot_id, image)
                 image = align_to_primary_band(shot_id, image)
-                image = normalize_float_to_uint16(shot_id, image)
+                # image = normalize_float_to_uint16(shot_id, image)
 
             return image
 
