@@ -479,7 +479,7 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
         else: # for low resolution images
             if photo.camera_make == 'MicaSense' and photo.band_name == 'LWIR':
                 algo = 'rig'
-                log.ODM_INFO("Using camera rig relatives to compute warp matrix for %s (rig relatives: %s)" % photo.get_rig_relatives())
+                log.ODM_INFO("Using camera rig relatives to compute warp matrix for %s (rig relatives: %s)" % (photo.filename, photo.get_rig_relatives()))
                 result = find_rig_homography(photo, align_photo), (align_image_gray.shape[1], align_image_gray.shape[0])
 
             else:
