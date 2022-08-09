@@ -510,7 +510,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
 
     log.ODM_INFO("Pyramid levels: %s" % pyramid_levels)
 
-    if warp_matrix_init:
+    if warp_matrix_init is not None:
         warp_matrix = warp_matrix_init * np.array([[1,1,2],[1,1,2],[0.5,0.5,1]], dtype=np.float32)**(1-(pyramid_levels+1))
     else:
         # Quick check on size
@@ -562,7 +562,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
         except Exception as e:
             if level != pyramid_levels:
                 log.ODM_INFO("Could not compute ECC warp_matrix at pyramid level %s, resetting matrix" % level)
-                if warp_matrix_init:
+                if warp_matrix_init is not None:
                     warp_matrix = warp_matrix_init * np.array([[1,1,2],[1,1,2],[0.5,0.5,1]], dtype=np.float32)**(1-(pyramid_levels+1))
                 else:
                     warp_matrix = np.eye(3, 3, dtype=np.float32)
