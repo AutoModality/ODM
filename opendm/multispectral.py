@@ -473,21 +473,22 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
                 algo = 'ecc'
                 log.ODM_INFO("Can't use features matching for %s, will use ECC (this might take a bit)" % photo.filename)
                 result = compute_using(find_ecc_homography)
-                if result[0] is None:
-                    algo = None
 
         else: # for low resolution images
             if photo.camera_make == 'MicaSense' and photo.band_name == 'LWIR':
                 algo = 'rig'
                 log.ODM_INFO("Using camera rig relatives to compute warp matrix for %s (rig relatives: %s)" % (photo.filename, photo.get_rig_relatives()))
-                result = find_rig_homography(photo, align_photo), (align_image_gray.shape[1], align_image_gray.shape[0])
+                _warp_matrix = find_ecc_homography(image_gray, align_image_gray, warp_matrix_init=find_rig_homography(photo, align_photo))
+                log.ODM_INFO("Warp matrix for %s --> %s: %s" % (photo.filename, align_photo.filename, _warp_matrix))
+                result = _warp_matrix, (align_image_gray.shape[1], align_image_gray.shape[0])
 
             else:
                 algo = 'ecc'
                 log.ODM_INFO("Using ECC for %s (this might take a bit)" % photo.filename)
                 result = compute_using(find_ecc_homography)
-                if result[0] is None:
-                    algo = None
+
+        if result[0] is None:
+            algo = None        
 
         warp_matrix, dimension = result
         return warp_matrix, dimension, algo
@@ -496,7 +497,7 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
         log.ODM_WARNING("Compute homography: %s" % str(e))
         return None, (None, None), None
 
-def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000, termination_eps=1e-8, start_eps=1e-4):
+def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000, termination_eps=1e-8, start_eps=1e-4, warp_matrix_init=None):
     # Major props to Alexander Reynolds for his insight into the pyramided matching process found at
     # https://stackoverflow.com/questions/45997891/cv2-motion-euclidean-for-the-warp-mode-in-ecc-image-alignment-method
     pyramid_levels = 0
@@ -509,18 +510,25 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
 
     log.ODM_INFO("Pyramid levels: %s" % pyramid_levels)
 
-    # Quick check on size
-    if align_image_gray.shape[0] != image_gray.shape[0]:
-        align_image_gray = to_8bit(align_image_gray)
-        image_gray = to_8bit(image_gray)
+    if warp_matrix_init:
+        warp_matrix = warp_matrix_init * np.array([[1,1,2],[1,1,2],[0.5,0.5,1]], dtype=np.float32)**(1-(pyramid_levels+1))
+    else:
+        # Quick check on size
+        if align_image_gray.shape[0] != image_gray.shape[0]:
+            align_image_gray = to_8bit(align_image_gray)
+            image_gray = to_8bit(image_gray)
 
-        fx = align_image_gray.shape[1]/image_gray.shape[1]
-        fy = align_image_gray.shape[0]/image_gray.shape[0]
+            fx = align_image_gray.shape[1]/image_gray.shape[1]
+            fy = align_image_gray.shape[0]/image_gray.shape[0]
 
-        image_gray = cv2.resize(image_gray, None,
-                        fx=fx,
-                        fy=fy,
-                        interpolation=(cv2.INTER_AREA if (fx < 1.0 and fy < 1.0) else cv2.INTER_LANCZOS4))
+            image_gray = cv2.resize(image_gray, None,
+                            fx=fx,
+                            fy=fy,
+                            interpolation=(cv2.INTER_AREA if (fx < 1.0 and fy < 1.0) else cv2.INTER_LANCZOS4))
+
+        # Define the motion model, scale the initial warp matrix to smallest level
+        warp_matrix = np.eye(3, 3, dtype=np.float32)
+        warp_matrix = warp_matrix * np.array([[1,1,2],[1,1,2],[0.5,0.5,1]], dtype=np.float32)**(1-(pyramid_levels+1))
 
     # Build pyramids
     image_gray_pyr = [image_gray]
@@ -532,11 +540,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
                                 interpolation=cv2.INTER_AREA))
         align_image_pyr[0] = to_8bit(align_image_pyr[0], force_normalize=True)
         align_image_pyr.insert(0, cv2.resize(align_image_pyr[0], None, fx=1/2, fy=1/2,
-                                interpolation=cv2.INTER_AREA))
-
-    # Define the motion model, scale the initial warp matrix to smallest level
-    warp_matrix = np.eye(3, 3, dtype=np.float32)
-    warp_matrix = warp_matrix * np.array([[1,1,2],[1,1,2],[0.5,0.5,1]], dtype=np.float32)**(1-(pyramid_levels+1))
+                                interpolation=cv2.INTER_AREA))    
 
     for level in range(pyramid_levels+1):
         ig = gradient(gaussian(image_gray_pyr[level]))
@@ -558,8 +562,11 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
         except Exception as e:
             if level != pyramid_levels:
                 log.ODM_INFO("Could not compute ECC warp_matrix at pyramid level %s, resetting matrix" % level)
-                warp_matrix = np.eye(3, 3, dtype=np.float32)
-                warp_matrix = warp_matrix * np.array([[1,1,2],[1,1,2],[0.5,0.5,1]], dtype=np.float32)**(1-(pyramid_levels+1))
+                if warp_matrix_init:
+                    warp_matrix = warp_matrix_init * np.array([[1,1,2],[1,1,2],[0.5,0.5,1]], dtype=np.float32)**(1-(pyramid_levels+1))
+                else:
+                    warp_matrix = np.eye(3, 3, dtype=np.float32)
+                    warp_matrix = warp_matrix * np.array([[1,1,2],[1,1,2],[0.5,0.5,1]], dtype=np.float32)**(1-(pyramid_levels+1))
             else:
                 raise e
 
@@ -618,8 +625,7 @@ def find_features_homography(image_gray, align_image_gray, feature_retention=0.7
 def find_rig_homography(photo, align_photo):
     # warp_matrix = np.linalg.inv(photo.get_homography(align_photo))
     # warp_matrix /= warp_matrix[2,2]
-    warp_matrix = photo.get_homography(align_photo)
-    log.ODM_INFO("Warp matrix for %s --> %s: %s" % (photo.filename, align_photo.filename, warp_matrix))
+    warp_matrix = photo.get_homography(align_photo)    
     return warp_matrix
 
 def gradient(im, ksize=5):
