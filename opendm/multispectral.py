@@ -508,6 +508,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
     min_dim = min(h, w)
 
     number_of_iterations = 1000 if min_dim > 300 else 2500
+    termination_eps = 1e-8 if min_dim > 300 else 1e-6
     gaussian_filter_size = 9 if min_dim > 300 else 5
 
     while min_dim > 300:
@@ -651,9 +652,9 @@ def local_normalize(im):
 
 def align_image(image, warp_matrix, dimension, interpolation_mode=cv2.INTER_LINEAR):
     if warp_matrix.shape == (3, 3):
-        return cv2.warpPerspective(image, warp_matrix, dimension, flags=interpolation_mode)
+        return cv2.warpPerspective(image, warp_matrix, dimension, flags=interpolation_mode+cv2.WARP_INVERSE_MAP)
     else:
-        return cv2.warpAffine(image, warp_matrix, dimension, flags=interpolation_mode)
+        return cv2.warpAffine(image, warp_matrix, dimension, flags=interpolation_mode+cv2.WARP_INVERSE_MAP)
 
 
 def to_8bit(image, force_normalize=False):
