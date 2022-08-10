@@ -106,7 +106,7 @@ class ODMOpenSfMStage(types.ODM_Stage):
             # for func in undistort_pipeline:
             #    image = func(shot_id, image)
             if reconstruction.multi_camera:
-                image = resize_thermal_images(shot_id, image)
+                # image = resize_thermal_images(shot_id, image)
                 if args.radiometric_calibration != "none":
                     image = radiometric_calibrate(shot_id, image)
                 image = align_to_primary_band(shot_id, image)
@@ -146,8 +146,11 @@ class ODMOpenSfMStage(types.ODM_Stage):
             if ainfo_band is not None:
                 ainfo_shot = next((item for item in ainfo_band if item['filename'] == shot_id), None) # alignment_info is a dictionary but ainfo_band is a list
                 if ainfo_shot is not None:
-                    interpolation_mode = cv2.INTER_LANCZOS4 if photo.is_thermal() else cv2.INTER_NEAREST
-                    aligned_image = multispectral.align_image(image, ainfo_shot['warp_matrix'], ainfo_shot['dimension'], interpolation_mode)
+                    if photo.is_thermal():
+                        warp_matrix_init = photo.get_homography(reconstruction.get_photo(ainfo_shot['align_filename']))
+                        image = multispectral.align_image(image, warp_matrix_init, ainfo_shot['dimension'], interpolation_mode=cv2.INTER_LANCZOS4)
+
+                    aligned_image = multispectral.align_image(image, ainfo_shot['warp_matrix'], ainfo_shot['dimension'], interpolation_mode=cv2.INTER_NEAREST)
 
                     # cropped_bounds, _ = photo.find_crop_bounds(ainfo_shot['warp_matrix'])
                     # (left, top, w, h) = tuple(int(i) for i in cropped_bounds)

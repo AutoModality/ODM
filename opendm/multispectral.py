@@ -355,6 +355,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
 
                         matrices_samples.append({
                             'filename': filename,
+                            'align_filename': primary_band_photo.filename,
                             'warp_matrix': warp_matrix,
                             'eigvals': np.linalg.eigvals(warp_matrix),
                             'dimension': dimension,
@@ -388,6 +389,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
                 matrices_all = []
 
                 for photo in [{'filename': p.filename} for p in band['photos']]:
+                    primary_band_photo = s2p.get(photo['filename'])
                     local_warp_matrix = next((item for item in matrices_samples if item['filename'] == photo['filename']), None) # matrices_samples is a list
 
                     if use_local_warp_matrix and local_warp_matrix is not None:
@@ -395,6 +397,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
                     else:
                         matrices_all.append({
                             'filename': photo['filename'],
+                            'align_filename': primary_band_photo.filename,
                             'warp_matrix': best_candidate['warp_matrix'],
                             'eigvals': best_candidate['eigvals'],
                             'dimension': best_candidate['dimension'],
@@ -497,12 +500,15 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
         log.ODM_WARNING("Compute homography: %s" % str(e))
         return None, (None, None), None
 
-def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000, termination_eps=1e-7, start_eps=1e-4, warp_matrix_init=None):
+def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000, termination_eps=1e-8, start_eps=1e-4, warp_matrix_init=None):
     # Major props to Alexander Reynolds for his insight into the pyramided matching process found at
     # https://stackoverflow.com/questions/45997891/cv2-motion-euclidean-for-the-warp-mode-in-ecc-image-alignment-method
     pyramid_levels = 0
     h,w = image_gray.shape
     min_dim = min(h, w)
+
+    termination_eps = 1e-8 if min_dim > 300 else 1e-6
+    gaussian_filter_size = 9 if min_dim > 300 else 5
 
     while min_dim > 300:
         min_dim /= 2.0
@@ -556,8 +562,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
         criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT,
                 number_of_iterations, eps)
 
-        try:
-            gaussian_filter_size = 9 if min_dim > 300 else 5
+        try:            
             log.ODM_INFO("Computing ECC pyramid level %s using Gaussian filter size %s" % (level, gaussian_filter_size))
             _, warp_matrix = cv2.findTransformECC(aig, ig, warp_matrix, cv2.MOTION_HOMOGRAPHY, criteria, inputMask=None, gaussFiltSize=gaussian_filter_size)
         except Exception as e:
@@ -624,7 +629,7 @@ def find_features_homography(image_gray, align_image_gray, feature_retention=0.7
 def find_rig_homography(photo, align_photo):
     # warp_matrix = np.linalg.inv(photo.get_homography(align_photo))
     # warp_matrix /= warp_matrix[2,2]
-    warp_matrix = photo.get_homography(align_photo)    
+    warp_matrix = photo.get_homography(align_photo)
     return warp_matrix
 
 def gradient(im, ksize=5):
