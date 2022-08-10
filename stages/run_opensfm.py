@@ -106,7 +106,7 @@ class ODMOpenSfMStage(types.ODM_Stage):
             # for func in undistort_pipeline:
             #    image = func(shot_id, image)
             if reconstruction.multi_camera:
-                # image = resize_thermal_images(shot_id, image)
+                image = resize_thermal_images(shot_id, image)
                 if args.radiometric_calibration != "none":
                     image = radiometric_calibrate(shot_id, image)
                 image = align_to_primary_band(shot_id, image)
