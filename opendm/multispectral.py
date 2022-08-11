@@ -327,7 +327,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
         if band['name'] != primary_band_name:
             matrices_samples = []
             max_samples == max_samples if band['name'] != 'LWIR' and max_samples < len(band['photos']) else len(band['photos'])
-            use_local_warp_matrix = False if band['name'] != 'LWIR' else True
+            use_local_warp_matrix = False # if band['name'] != 'LWIR' else True
 
             def parallel_compute_homography(photo):
                 filename = photo.filename
@@ -481,7 +481,8 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
             if photo.camera_make == 'MicaSense' and photo.band_name == 'LWIR':
                 algo = 'rig'
                 log.ODM_INFO("Using camera rig relatives to compute warp matrix for %s (rig relatives: %s)" % (photo.filename, photo.get_rig_relatives()))
-                _warp_matrix = find_ecc_homography(image_gray, align_image_gray, warp_matrix_init=find_rig_homography(photo, align_photo))
+                # _warp_matrix = find_ecc_homography(image_gray, align_image_gray, warp_matrix_init=find_rig_homography(photo, align_photo))
+                _warp_matrix = find_rig_homography(photo, align_photo)
                 log.ODM_INFO("Warp matrix for %s --> %s: %s" % (photo.filename, align_photo.filename, _warp_matrix))
                 result = _warp_matrix, (align_image_gray.shape[1], align_image_gray.shape[0])
 

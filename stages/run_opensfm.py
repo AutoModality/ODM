@@ -147,11 +147,11 @@ class ODMOpenSfMStage(types.ODM_Stage):
                 ainfo_shot = next((item for item in ainfo_band if item['filename'] == shot_id), None) # alignment_info is a dictionary but ainfo_band is a list
                 if ainfo_shot is not None:
                     if photo.is_thermal():
-                        warp_matrix_init = photo.get_homography(reconstruction.get_photo(ainfo_shot['align_filename']))
-                        image = multispectral.align_image(image, warp_matrix_init, ainfo_shot['dimension'], flags=cv2.INTER_LANCZOS4)
-                        flags = cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP
+                        # warp_matrix_init = photo.get_homography(reconstruction.get_photo(ainfo_shot['align_filename']))
+                        # image = multispectral.align_image(image, warp_matrix_init, ainfo_shot['dimension'], flags=cv2.INTER_LANCZOS4)
+                        flags = cv2.INTER_LANCZOS4 + cv2.WARP_INVERSE_MAP
                     else:
-                        flags = cv2.INTER_LINEAR
+                        flags = cv2.INTER_NEAREST
                     aligned_image = multispectral.align_image(image, ainfo_shot['warp_matrix'], ainfo_shot['dimension'], flags=flags)
 
                     # cropped_bounds, _ = photo.find_crop_bounds(ainfo_shot['warp_matrix'])
