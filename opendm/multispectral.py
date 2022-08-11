@@ -6,6 +6,7 @@ from opendm import dls
 import numpy as np
 from opendm import log
 from opendm.concurrency import parallel_map
+from opendm import thermal
 from opensfm.io import imread
 
 from skimage import exposure
@@ -184,7 +185,7 @@ def radiometric_calibrate(photo, image, image_type='reflectance', irradiance_by_
     if not photo.is_thermal():
         return dn_to_reflectance(photo, image, band_irradiance_mean, use_sun_sensor) if image_type == 'reflectance' else dn_to_radiance(photo, image)
     else:
-        return image
+        return thermal.dn_to_temperature(photo, image)
 
 def get_photos_by_band(multi_camera, user_band_name):
     band_name = get_primary_band_name(multi_camera, user_band_name)
@@ -327,7 +328,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
         if band['name'] != primary_band_name:
             matrices_samples = []
             max_samples == max_samples if band['name'] != 'LWIR' and max_samples < len(band['photos']) else len(band['photos'])
-            use_local_warp_matrix = False # if band['name'] != 'LWIR' else True
+            use_local_warp_matrix = False if band['name'] != 'LWIR' else True
 
             def parallel_compute_homography(photo):
                 filename = photo.filename

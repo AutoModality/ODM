@@ -19,7 +19,7 @@ def resize_to_match(image, match_photo = None):
                     interpolation=cv2.INTER_LANCZOS4)
     return image
 
-def dn_to_temperature(photo, image, dataset_tree):
+def dn_to_temperature(photo, image, dataset_tree=None):
     """
     Convert Digital Number values to temperature (C) values
     :param photo ODM_Photo
@@ -52,8 +52,11 @@ def dn_to_temperature(photo, image, dataset_tree):
             else:
                 return image
         elif photo.camera_make == "DJI" and photo.camera_model == "MAVIC2-ENTERPRISE-ADVANCED":
-            image = dji_unpack.extract_temperatures_dji(photo, image, dataset_tree)
-            image = image.astype("float32")
+            try:
+                image = dji_unpack.extract_temperatures_dji(photo, image, dataset_tree)
+                image = image.astype("float32")
+            except Exception as e:
+                pass
             return image
         else:
             log.ODM_WARNING("Unsupported camera [%s %s], thermal band will have digital numbers." % (photo.camera_make, photo.camera_model))
