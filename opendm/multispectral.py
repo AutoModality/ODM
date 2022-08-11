@@ -317,7 +317,7 @@ def compute_band_irradiances(multi_camera):
 
     return band_irradiance_info
 
-def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p, p2s, max_concurrency=1, max_samples=50, irradiance_by_hand=None, use_sun_sensor=True):
+def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p, p2s, max_concurrency=1, max_samples=30, irradiance_by_hand=None, use_sun_sensor=True):
     log.ODM_INFO("Computing band alignment")
 
     alignment_info = {}
@@ -508,6 +508,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
     h,w = image_gray.shape
     min_dim = min(h, w)
 
+    number_of_iterations = 1000 if min_dim > 300 else 2500
     termination_eps = 1e-8 if min_dim > 300 else 1e-7
     gaussian_filter_size = 9 if min_dim > 300 else 5
 
@@ -572,8 +573,8 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
                 warp_matrix = np.eye(3, 3, dtype=np.float32)
                 warp_matrix = warp_matrix * np.array([[1,1,2],[1,1,2],[0.5,0.5,1]], dtype=np.float32)**(1-(pyramid_levels+1))
             else:
-                warp_matrix = np.eye(3, 3, dtype=np.float32)
-                # raise e
+                # warp_matrix = np.eye(3, 3, dtype=np.float32)
+                raise e
 
 
         if level != pyramid_levels:
