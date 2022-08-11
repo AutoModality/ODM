@@ -517,7 +517,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
     log.ODM_INFO("Pyramid levels: %s" % pyramid_levels)
 
     if warp_matrix_init is not None:
-        image_gray = align_image(image_gray, warp_matrix_init, (align_image_gray.shape[1], align_image_gray.shape[0]), interpolation_mode=cv2.INTER_LANCZOS4)
+        image_gray = align_image(image_gray, warp_matrix_init, (align_image_gray.shape[1], align_image_gray.shape[0]), flags=cv2.INTER_LANCZOS4)
         image_gray = to_8bit(image_gray)
     else:
         # Quick check on size
@@ -564,7 +564,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
 
         try:            
             log.ODM_INFO("Computing ECC pyramid level %s using Gaussian filter size %s" % (level, gaussian_filter_size))
-            _, warp_matrix = cv2.findTransformECC(ig, aig, warp_matrix, cv2.MOTION_HOMOGRAPHY, criteria, inputMask=None, gaussFiltSize=gaussian_filter_size)
+            _, warp_matrix = cv2.findTransformECC(aig, ig, warp_matrix, cv2.MOTION_HOMOGRAPHY, criteria, inputMask=None, gaussFiltSize=gaussian_filter_size)
         except Exception as e:
             if level != pyramid_levels:
                 log.ODM_INFO("Could not compute ECC warp_matrix at pyramid level %s, resetting matrix" % level)                
@@ -649,11 +649,11 @@ def local_normalize(im):
     return im
 
 
-def align_image(image, warp_matrix, dimension, interpolation_mode=cv2.INTER_LINEAR):
+def align_image(image, warp_matrix, dimension, flags=cv2.INTER_LINEAR):
     if warp_matrix.shape == (3, 3):
-        return cv2.warpPerspective(image, warp_matrix, dimension, flags=interpolation_mode)
+        return cv2.warpPerspective(image, warp_matrix, dimension, flags=flags)
     else:
-        return cv2.warpAffine(image, warp_matrix, dimension, flags=interpolation_mode)
+        return cv2.warpAffine(image, warp_matrix, dimension, flags=flags)
 
 
 def to_8bit(image, force_normalize=False):
