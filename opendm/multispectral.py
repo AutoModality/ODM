@@ -12,6 +12,7 @@ from opensfm.io import imread
 from skimage import exposure
 from skimage.morphology import disk
 from skimage.filters import rank, gaussian
+from skimage.util import img_as_ubyte
 
 # Loosely based on https://github.com/micasense/imageprocessing/blob/master/micasense/utils.py
 
@@ -327,7 +328,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
     for band in multi_camera:
         if band['name'] != primary_band_name:
             matrices_samples = []
-            use_local_warp_matrix = True # if band['name'] == 'LWIR' else False
+            use_local_warp_matrix = False # if band['name'] == 'LWIR' else False
             max_samples == max_samples if not use_local_warp_matrix else len(band['photos'])
 
             def parallel_compute_homography(photo):
@@ -481,10 +482,10 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
         else: # for low resolution images
             if photo.camera_make == 'MicaSense' and photo.band_name == 'LWIR':
                 algo = 'rig'
-                log.ODM_INFO("Using camera rig relatives to compute warp matrix for %s (rig relatives: %s)" % (photo.filename, photo.get_rig_relatives()))
+                log.ODM_INFO("Using camera rig relatives to compute initial warp matrix for %s (rig relatives: %s)" % (photo.filename, str(photo.get_rig_relatives())))
                 # _warp_matrix = find_ecc_homography(image_gray, align_image_gray, warp_matrix_init=find_rig_homography(photo, align_photo))
                 _warp_matrix = find_ecc_homography(image_gray, align_image_gray)
-                log.ODM_INFO("Warp matrix for %s --> %s: %s" % (photo.filename, align_photo.filename, _warp_matrix))
+                log.ODM_DEBUG("Warp matrix for %s --> %s: %s" % (photo.filename, align_photo.filename, str(_warp_matrix)))
                 result = _warp_matrix, (align_image_gray.shape[1], align_image_gray.shape[0])
 
             else:
@@ -521,40 +522,34 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
 
     if warp_matrix_init is not None:
         image_gray = align_image(image_gray, warp_matrix_init, (align_image_gray.shape[1], align_image_gray.shape[0]), flags=cv2.INTER_LANCZOS4)
-        image_gray = to_8bit(image_gray)
     else:
-        # Quick check on size
         if align_image_gray.shape[0] != image_gray.shape[0]:
-            align_image_gray = to_8bit(align_image_gray)
-            image_gray = to_8bit(image_gray)
-
             fx = align_image_gray.shape[1]/image_gray.shape[1]
             fy = align_image_gray.shape[0]/image_gray.shape[0]
-
             image_gray = cv2.resize(image_gray, None,
                             fx=fx,
                             fy=fy,
                             interpolation=(cv2.INTER_AREA if (fx < 1.0 and fy < 1.0) else cv2.INTER_LANCZOS4))
 
     # Define the motion model, scale the initial warp matrix to smallest level
-    warp_matrix = np.eye(3, 3, dtype=np.float32)
-    warp_matrix = warp_matrix * np.array([[1,1,2],[1,1,2],[0.5,0.5,1]], dtype=np.float32)**(1-(pyramid_levels+1))
+    default_matrix = np.eye(3, 3, dtype=np.float32)
+    warp_matrix = default_matrix * np.array([[1,1,2],[1,1,2],[0.5,0.5,1]], dtype=np.float32)**(1-(pyramid_levels+1))
 
     # Build pyramids
     image_gray_pyr = [image_gray]
     align_image_pyr = [align_image_gray]
 
     for level in range(pyramid_levels):
-        image_gray_pyr[0] = to_8bit(image_gray_pyr[0], force_normalize=True)
+        image_gray_pyr[0] = gaussian(normalize(image_gray_pyr[0]))
         image_gray_pyr.insert(0, cv2.resize(image_gray_pyr[0], None, fx=1/2, fy=1/2,
                                 interpolation=cv2.INTER_AREA))
-        align_image_pyr[0] = to_8bit(align_image_pyr[0], force_normalize=True)
+        align_image_pyr[0] = gaussian(normalize(align_image_pyr[0]))
         align_image_pyr.insert(0, cv2.resize(align_image_pyr[0], None, fx=1/2, fy=1/2,
                                 interpolation=cv2.INTER_AREA))    
 
     for level in range(pyramid_levels+1):
-        ig = gradient(gaussian(image_gray_pyr[level]))
-        aig = gradient(gaussian(align_image_pyr[level]))
+        ig = gradient(image_gray_pyr[level])
+        aig = gradient(align_image_pyr[level])
 
         if level == pyramid_levels and pyramid_levels == 0:
             eps = termination_eps
@@ -570,9 +565,8 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
             _, warp_matrix = cv2.findTransformECC(aig, ig, warp_matrix, cv2.MOTION_HOMOGRAPHY, criteria, inputMask=None, gaussFiltSize=gaussian_filter_size)
         except Exception as e:
             if level != pyramid_levels:
-                log.ODM_INFO("Could not compute ECC warp_matrix at pyramid level %s, resetting matrix" % level)                
-                warp_matrix = np.eye(3, 3, dtype=np.float32)
-                warp_matrix = warp_matrix * np.array([[1,1,2],[1,1,2],[0.5,0.5,1]], dtype=np.float32)**(1-(pyramid_levels+1))
+                log.ODM_INFO("Could not compute ECC warp_matrix at pyramid level %s, resetting matrix" % level)
+                warp_matrix = default_matrix * np.array([[1,1,2],[1,1,2],[0.5,0.5,1]], dtype=np.float32)**(1-(pyramid_levels+1))
             else:
                 # warp_matrix = np.eye(3, 3, dtype=np.float32)
                 raise e
@@ -635,6 +629,17 @@ def find_rig_homography(photo, align_photo):
     warp_matrix = photo.get_homography(align_photo)
     return warp_matrix
 
+def normalize(im, min=None, max=None):
+    width, height = im.shape
+    norm = np.zeros((width, height), dtype=np.float32)
+    if min is not None and max is not None:
+        norm = (im - min) / (max-min)
+    else:
+        cv2.normalize(im, dst=norm, alpha=0.0, beta=1.0, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+    norm[norm<0.0] = 0.0
+    norm[norm>1.0] = 1.0
+    return norm
+
 def gradient(im, ksize=5):
     im = local_normalize(im)
     grad_x = cv2.Sobel(im,cv2.CV_32F,1,0,ksize=ksize)
@@ -643,14 +648,14 @@ def gradient(im, ksize=5):
     return grad
 
 def local_normalize(im):
+    norm = img_as_ubyte(normalize(im))
     width, _ = im.shape
     disksize = int(width/5)
     if disksize % 2 == 0:
         disksize = disksize + 1
     selem = disk(disksize)
-    im = rank.equalize(im, selem=selem)
+    im = rank.equalize(norm, selem=selem)
     return im
-
 
 def align_image(image, warp_matrix, dimension, flags=cv2.INTER_LINEAR):
     if warp_matrix.shape == (3, 3):
