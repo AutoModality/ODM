@@ -327,8 +327,8 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
     for band in multi_camera:
         if band['name'] != primary_band_name:
             matrices_samples = []
-            max_samples == max_samples if band['name'] != 'LWIR' and max_samples < len(band['photos']) else len(band['photos'])
-            use_local_warp_matrix = False if band['name'] != 'LWIR' else True
+            use_local_warp_matrix = True # if band['name'] == 'LWIR' else False
+            max_samples == max_samples if not use_local_warp_matrix else len(band['photos'])
 
             def parallel_compute_homography(photo):
                 filename = photo.filename
@@ -509,8 +509,8 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
     h,w = image_gray.shape
     min_dim = min(h, w)
 
-    number_of_iterations = 1000 if min_dim > 300 else 2500
-    termination_eps = 1e-8 if min_dim > 300 else 1e-7
+    number_of_iterations = 1000 if min_dim > 300 else 5000
+    termination_eps = 1e-8 if min_dim > 300 else 1e-9
     gaussian_filter_size = 9 if min_dim > 300 else 5
 
     while min_dim > 300:
