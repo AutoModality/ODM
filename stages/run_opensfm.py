@@ -149,9 +149,9 @@ class ODMOpenSfMStage(types.ODM_Stage):
                     if photo.is_thermal():
                         # warp_matrix_init = photo.get_homography(reconstruction.get_photo(ainfo_shot['align_filename']))
                         # image = multispectral.align_image(image, warp_matrix_init, ainfo_shot['dimension'], flags=cv2.INTER_LANCZOS4)
-                        flags = cv2.INTER_LANCZOS4 + cv2.WARP_INVERSE_MAP
+                        flags = cv2.INTER_LINEAR #+ cv2.WARP_INVERSE_MAP
                     else:
-                        flags = cv2.INTER_NEAREST
+                        flags = cv2.INTER_LINEAR
                     aligned_image = multispectral.align_image(image, ainfo_shot['warp_matrix'], ainfo_shot['dimension'], flags=flags)
 
                     # cropped_bounds, _ = photo.find_crop_bounds(ainfo_shot['warp_matrix'])

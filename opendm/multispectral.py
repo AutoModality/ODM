@@ -426,7 +426,7 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
         if image.shape[2] == 3:
             image_gray = to_8bit(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))
         else:
-            image_gray = to_8bit(image[:,:,0])
+            image_gray = normalize(image) #to_8bit(image[:,:,0])
 
         max_dim = max(image_gray.shape)
         # if max_dim <= 320:
@@ -437,7 +437,7 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
         if align_image.shape[2] == 3:
             align_image_gray = to_8bit(cv2.cvtColor(align_image, cv2.COLOR_BGR2GRAY))
         else:
-            align_image_gray = to_8bit(align_image[:,:,0])
+            align_image_gray = normalize(align_image) #to_8bit(align_image[:,:,0])
 
         def compute_using(algorithm):
             try:
@@ -482,10 +482,10 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
         else: # for low resolution images
             if photo.camera_make == 'MicaSense' and photo.band_name == 'LWIR':
                 algo = 'rig'
-                log.ODM_INFO("Using camera rig relatives to compute initial warp matrix for %s (rig relatives: %s)" % (photo.filename, str(photo.get_rig_relatives())))
+                # log.ODM_INFO("Using camera rig relatives to compute initial warp matrix for %s (rig relatives: %s)" % (photo.filename, str(photo.get_rig_relatives())))
                 # _warp_matrix = find_ecc_homography(image_gray, align_image_gray, warp_matrix_init=find_rig_homography(photo, align_photo))
                 _warp_matrix = find_ecc_homography(image_gray, align_image_gray)
-                log.ODM_DEBUG("Warp matrix for %s --> %s: %s" % (photo.filename, align_photo.filename, str(_warp_matrix)))
+                log.ODM_INFO("Warp matrix for %s --> %s: %s" % (photo.filename, align_photo.filename, str(_warp_matrix)))
                 result = _warp_matrix, (align_image_gray.shape[1], align_image_gray.shape[0])
 
             else:
@@ -511,7 +511,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
     min_dim = min(h, w)
 
     number_of_iterations = 1000 if min_dim > 300 else 5000
-    termination_eps = 1e-8 if min_dim > 300 else 1e-9
+    termination_eps = 1e-8 #if min_dim > 300 else 1e-9
     gaussian_filter_size = 9 if min_dim > 300 else 5
 
     while min_dim > 300:
