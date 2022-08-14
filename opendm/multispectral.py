@@ -426,7 +426,7 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
         if image.shape[2] == 3:
             image_gray = to_8bit(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))
         else:
-            image_gray = normalize(image) #to_8bit(image[:,:,0])
+            image_gray = to_8bit(image[:,:,0])
 
         max_dim = max(image_gray.shape)
         # if max_dim <= 320:
@@ -437,7 +437,7 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
         if align_image.shape[2] == 3:
             align_image_gray = to_8bit(cv2.cvtColor(align_image, cv2.COLOR_BGR2GRAY))
         else:
-            align_image_gray = normalize(align_image) #to_8bit(align_image[:,:,0])
+            align_image_gray = to_8bit(align_image[:,:,0])
 
         def compute_using(algorithm):
             try:
