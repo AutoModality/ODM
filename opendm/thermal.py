@@ -26,20 +26,15 @@ def dn_to_temperature(photo, image, dataset_tree=None):
     :param image numpy array containing image data
     :param dataset_tree path to original source image to read data using PIL for DJI thermal photos
     :return numpy array with temperature (C) image values
-    """
-
-   
+    """   
 
     # Handle thermal bands
     if photo.is_thermal():
         # Every camera stores thermal information differently
-        # The following will work for MicaSense Altum cameras
-        # but not necessarily for others
-        if photo.camera_make == "MicaSense" and photo.camera_model == "Altum":
+        if photo.camera_make == "MicaSense": # Assume MicaSense cameras (RedEdge-MX, Altum, Altum-PT, and others) are using the same thermal calibration
             image = image.astype("float32")
             image -= (273.15 * 100.0) # Convert Kelvin to Celsius
             image *= 0.01
-
             return image
         elif photo.camera_make == "DJI" and photo.camera_model == "ZH20T":            
             filename, file_extension = os.path.splitext(photo.filename)
