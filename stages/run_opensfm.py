@@ -106,7 +106,7 @@ class ODMOpenSfMStage(types.ODM_Stage):
             # for func in undistort_pipeline:
             #    image = func(shot_id, image)
             if reconstruction.multi_camera:
-                image = resize_thermal_images(shot_id, image)
+                # image = resize_thermal_images(shot_id, image)
                 if args.radiometric_calibration != "none":
                     image = radiometric_calibrate(shot_id, image)
                 image = align_to_primary_band(shot_id, image)
@@ -147,8 +147,11 @@ class ODMOpenSfMStage(types.ODM_Stage):
                 ainfo_shot = next((item for item in ainfo_band if item['filename'] == shot_id), None) # alignment_info is a dictionary but ainfo_band is a list
                 if ainfo_shot is not None:
                     if photo.is_thermal():
-                        # warp_matrix_init = photo.get_homography(reconstruction.get_photo(ainfo_shot['align_filename']))
-                        # image = multispectral.align_image(image, warp_matrix_init, ainfo_shot['dimension'], flags=cv2.INTER_LANCZOS4)
+                        warp_matrix_init = photo.get_homography(reconstruction.get_photo(ainfo_shot['align_filename']))
+                        if warp_matrix_init is not None: # initial rough alignment
+                            image = multispectral.align_image(image, warp_matrix_init, ainfo_shot['dimension'], flags=cv2.INTER_LANCZOS4)
+                        else:
+                            image = resize_thermal_images(shot_id, image)
                         flags = cv2.INTER_LINEAR #+ cv2.WARP_INVERSE_MAP
                     else:
                         flags = cv2.INTER_LINEAR

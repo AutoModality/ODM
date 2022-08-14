@@ -473,6 +473,7 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
         if max_dim > 320:
             algo = 'feat'
             result = compute_using(find_features_homography)
+            log.ODM_INFO("Feature warp matrix for %s --> %s: \n%s" % (photo.filename, align_photo.filename, str(result[0])))
 
             if result[0] is None:
                 algo = 'ecc'
@@ -482,16 +483,17 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
         else: # for low resolution images
             if photo.camera_make == 'MicaSense' and photo.band_name == 'LWIR':
                 algo = 'rig'
-                # log.ODM_INFO("Using camera rig relatives to compute initial warp matrix for %s (rig relatives: %s)" % (photo.filename, str(photo.get_rig_relatives())))
-                # _warp_matrix = find_ecc_homography(image_gray, align_image_gray, warp_matrix_init=find_rig_homography(photo, align_photo))
-                _warp_matrix = find_ecc_homography(image_gray, align_image_gray)
-                log.ODM_INFO("Warp matrix for %s --> %s: %s" % (photo.filename, align_photo.filename, str(_warp_matrix)))
+                log.ODM_INFO("Using camera rig relatives to compute initial warp matrix for %s (rig relatives: %s)" % (photo.filename, str(photo.get_rig_relatives())))
+                warp_matrix_init = find_rig_homography(photo, align_photo)
+                _warp_matrix = find_ecc_homography(image_gray, align_image_gray, warp_matrix_init=warp_matrix_init)
                 result = _warp_matrix, (align_image_gray.shape[1], align_image_gray.shape[0])
 
             else:
                 algo = 'ecc'
                 log.ODM_INFO("Using ECC for %s (this might take a bit)" % photo.filename)
                 result = compute_using(find_ecc_homography)
+            
+            log.ODM_INFO("ECC warp matrix for %s --> %s: \n%s" % (photo.filename, align_photo.filename, str(result[0])))
 
         if result[0] is None:
             algo = None        
@@ -512,7 +514,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
 
     number_of_iterations = 1000 if min_dim > 300 else 5000
     termination_eps = 1e-8 #if min_dim > 300 else 1e-9
-    gaussian_filter_size = 9 if min_dim > 300 else 5
+    gaussian_filter_size = 9 #if min_dim > 300 else 5
 
     while min_dim > 300:
         min_dim /= 2.0
@@ -520,16 +522,18 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
 
     log.ODM_INFO("Pyramid levels: %s" % pyramid_levels)
 
-    if warp_matrix_init is not None:
-        image_gray = align_image(image_gray, warp_matrix_init, (align_image_gray.shape[1], align_image_gray.shape[0]), flags=cv2.INTER_LANCZOS4)
+    fx = align_image_gray.shape[1] / image_gray.shape[1]
+    fy = align_image_gray.shape[0] / image_gray.shape[0]
+    if warp_matrix_init is not None: # initial rough alignment
+        image_gray = align_image(image_gray, warp_matrix_init, 
+                                (align_image_gray.shape[1], align_image_gray.shape[0]), 
+                                flags=(cv2.INTER_LINEAR if (fx < 1.0 and fy < 1.0) else cv2.INTER_LANCZOS4))
     else:
-        if align_image_gray.shape[0] != image_gray.shape[0]:
-            fx = align_image_gray.shape[1]/image_gray.shape[1]
-            fy = align_image_gray.shape[0]/image_gray.shape[0]
+        if align_image_gray.shape[0] != image_gray.shape[0]:            
             image_gray = cv2.resize(image_gray, None,
-                            fx=fx,
-                            fy=fy,
-                            interpolation=(cv2.INTER_AREA if (fx < 1.0 and fy < 1.0) else cv2.INTER_LANCZOS4))
+                                    fx=fx,
+                                    fy=fy,
+                                    interpolation=(cv2.INTER_AREA if (fx < 1.0 and fy < 1.0) else cv2.INTER_LANCZOS4))
 
     # Define the motion model, scale the initial warp matrix to smallest level
     default_matrix = np.eye(3, 3, dtype=np.float32)
@@ -540,10 +544,8 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
     align_image_pyr = [align_image_gray]
 
     for level in range(pyramid_levels):
-        image_gray_pyr[0] = gaussian(normalize(image_gray_pyr[0]))
         image_gray_pyr.insert(0, cv2.resize(image_gray_pyr[0], None, fx=1/2, fy=1/2,
                                 interpolation=cv2.INTER_AREA))
-        align_image_pyr[0] = gaussian(normalize(align_image_pyr[0]))
         align_image_pyr.insert(0, cv2.resize(align_image_pyr[0], None, fx=1/2, fy=1/2,
                                 interpolation=cv2.INTER_AREA))    
 
