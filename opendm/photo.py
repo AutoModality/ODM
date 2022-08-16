@@ -1119,8 +1119,8 @@ class ODM_Photo:
     def cv2_distortion_coeff(self):
         return np.array(self.get_distortion_parameters())[[0, 1, 3, 4, 2]]
 
-    # get the homography that maps from this image to the reference image
     def get_homography(self, ref, R=None, T=None):
+        ''' get the homography that maps from this image to the reference image '''
         if R is None:
             R = rotations_degrees_to_rotation_matrix(self.get_rig_relatives())
         if T is None:
@@ -1149,8 +1149,23 @@ class ODM_Photo:
         B = B/B[2,2]
         return np.array(B)
 
-    # Compute the crop rectangle and the edges of the images
+    def undistorted(self, image):
+        ''' return the undistorted image from input image '''
+        new_cam_mat, _ = cv2.getOptimalNewCameraMatrix(self.cv2_camera_matrix(),
+                                                       self.cv2_distortion_coeff(),
+                                                       self.size(),
+                                                       1)
+        map1, map2 = cv2.initUndistortRectifyMap(self.cv2_camera_matrix(),
+                                                self.cv2_distortion_coeff(),
+                                                np.eye(3),
+                                                new_cam_mat,
+                                                self.size(),
+                                                cv2.CV_32F)
+        # compute the undistorted 16 bit image
+        return cv2.remap(image, map1, map2, cv2.INTER_LINEAR)
+
     def find_crop_bounds(self, warp_matrix, warp_mode=cv2.MOTION_HOMOGRAPHY):
+        ''' compute the crop rectangle and the edges of the input image '''
         bounds, edges = get_inner_rect(self.get_size(), warp_matrix, self.cv2_distortion_coeff(), self.cv2_camera_matrix(), warp_mode=cv2.MOTION_HOMOGRAPHY)
 
         left = np.ceil(bounds.min.x)
