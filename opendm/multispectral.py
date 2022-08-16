@@ -627,7 +627,7 @@ def find_features_homography(image_gray, align_image_gray, feature_retention=0.7
     return h
 
 def find_rig_homography(photo, align_photo):
-    return photo.get_homography(align_photo, optimize=False)
+    return photo.get_homography(align_photo, undistorted=False)
 
 def normalize(im, min=None, max=None):
     width, height = im.shape
