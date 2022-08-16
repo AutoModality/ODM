@@ -1119,7 +1119,7 @@ class ODM_Photo:
     def cv2_distortion_coeff(self):
         return np.array(self.get_distortion_parameters())[[0, 1, 3, 4, 2]]
 
-    def get_homography(self, ref, R=None, T=None):
+    def get_homography(self, ref, R=None, T=None, optimize=True):
         ''' get the homography that maps from this image to the reference image '''
         if R is None:
             R = rotations_degrees_to_rotation_matrix(self.get_rig_relatives())
@@ -1130,21 +1130,26 @@ class ODM_Photo:
         A[0:3,0:3]=np.dot(R_ref.T,R)
         A[0:3,3]=T
         A[3,3]=1.
-        C, _ = cv2.getOptimalNewCameraMatrix(self.cv2_camera_matrix(),
-                                             self.cv2_distortion_coeff(),
-                                             self.get_size(),1)
-        Cr, _ = cv2.getOptimalNewCameraMatrix(ref.cv2_camera_matrix(),
-                                              ref.cv2_distortion_coeff(),
-                                              ref.get_size(),1)
-        CC = np.zeros((4,4))
-        CC[0:3,0:3] = C
-        CC[3,3]=1.
-        CCr = np.zeros((4,4))
-        CCr[0:3,0:3] = Cr
-        CCr[3,3]=1.
 
-        B = np.array(np.dot(CCr,np.dot(A,np.linalg.inv(CC))))
-        B[:,2]=B[:,2]-B[:,3]
+        if not optimize:
+            B = A
+        else:
+            C, _ = cv2.getOptimalNewCameraMatrix(self.cv2_camera_matrix(),
+                                                self.cv2_distortion_coeff(),
+                                                self.get_size(),1)
+            Cr, _ = cv2.getOptimalNewCameraMatrix(ref.cv2_camera_matrix(),
+                                                ref.cv2_distortion_coeff(),
+                                                ref.get_size(),1)
+            CC = np.zeros((4,4))
+            CC[0:3,0:3] = C
+            CC[3,3]=1.
+            CCr = np.zeros((4,4))
+            CCr[0:3,0:3] = Cr
+            CCr[3,3]=1.
+
+            B = np.array(np.dot(CCr,np.dot(A,np.linalg.inv(CC))))
+
+        B[:,2]=B[:,2]-B[:,3]           
         B = B[0:3,0:3]
         B = B/B[2,2]
         return np.array(B)
