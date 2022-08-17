@@ -1154,13 +1154,13 @@ class ODM_Photo:
         ''' return the undistorted image from input image '''
         new_cam_mat, _ = cv2.getOptimalNewCameraMatrix(self.cv2_camera_matrix(),
                                                        self.cv2_distortion_coeff(),
-                                                       self.size(),
+                                                       self.get_size(),
                                                        1)
         map1, map2 = cv2.initUndistortRectifyMap(self.cv2_camera_matrix(),
                                                 self.cv2_distortion_coeff(),
                                                 np.eye(3),
                                                 new_cam_mat,
-                                                self.size(),
+                                                self.get_size(),
                                                 cv2.CV_32F)
         # compute the undistorted 16 bit image
         return cv2.remap(image, map1, map2, cv2.INTER_LINEAR)
