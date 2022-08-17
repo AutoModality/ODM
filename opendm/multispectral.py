@@ -631,7 +631,7 @@ def find_rig_homography(photo, align_photo, image, align_image):
         image_undistorted = photo.undistorted(image)
         align_image_undistorted = align_photo.undistorted(align_image)
         M_ig, _ = find_features_homography(image, image_undistorted)
-        M_aig, _ = find_features_homography(align_image, align_image_undistorted, cv2.RANSAC)
+        M_aig, _ = find_features_homography(align_image, align_image_undistorted)
         M = photo.get_homography(align_photo)
         log.ODM_INFO("%s --> %s transform matrices: M_src=%s, M_dst=%s, M_src_dst=%s" % 
                         (photo.filename, align_photo.filename, M_ig, M_aig, M))
@@ -639,7 +639,7 @@ def find_rig_homography(photo, align_photo, image, align_image):
             return M
         else:
             return np.array(np.dot(np.dot(np.linalg.inv(M_aig), M), M_ig))
-            
+
     except Exception as e:
         return e
 
