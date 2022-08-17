@@ -485,7 +485,7 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
             if photo.camera_make == 'MicaSense' and photo.band_name == 'LWIR':
                 algo = 'rig'
                 log.ODM_INFO("Using camera rig relatives to compute warp matrix for %s (rig relatives: %s)" % (photo.filename, str(photo.get_rig_relatives())))
-                warp_matrix_intrinsic = find_rig_homography(photo, align_photo)
+                warp_matrix_intrinsic = find_rig_homography(photo, align_photo, image_gray, align_image_gray)
                 #_warp_matrix = find_ecc_homography(image_gray, align_image_gray, warp_matrix_init=warp_matrix_intrinsic)
                 result = warp_matrix_intrinsic, (align_image_gray.shape[1], align_image_gray.shape[0])
 
@@ -626,8 +626,19 @@ def find_features_homography(image_gray, align_image_gray, feature_retention=0.7
     h, _ = cv2.findHomography(points_image, points_align_image, cv2.RANSAC)
     return h
 
-def find_rig_homography(photo, align_photo):
-    return photo.get_homography(align_photo, undistorted=False)
+def find_rig_homography(photo, align_photo, image, align_image):
+    try:
+        image_undistorted = photo.undistorted(image)
+        align_image_undistorted = align_photo.undistorted(align_image)
+        M_ig, _ = cv2.findHomography(image, image_undistorted, cv2.RANSAC)
+        M_aig, _ = cv2.findHomography(align_image, align_image_undistorted, cv2.RANSAC)
+        M = photo.get_homography(align_photo)
+        log.ODM_INFO("%s --> %s transform matrices: M_src=%s, M_dst=%s, M_src_dst=%s" % 
+                        (photo.filename, align_photo.filename, M_ig, M_aig, M))
+        warp_matrix = np.array(np.dot(np.dot(np.linalg.inv(M_aig), M), M_ig))
+        return warp_matrix
+    except Exception as e:
+        return e
 
 def normalize(im, min=None, max=None):
     width, height = im.shape
