@@ -633,12 +633,20 @@ def find_rig_homography(photo, align_photo, image, align_image):
         M_ig, _ = find_features_homography(image, image_undistorted)
         M_aig, _ = find_features_homography(align_image, align_image_undistorted)
         M = photo.get_homography(align_photo)
+
+        if M_ig is None:
+            M_ig = np.eye(3, 3, dtype=np.float32)
+            log.ODM_INFO("Cannot find feature homography between the raw image and undistorted image: %s" % photo.filename) 
+        
+        if M_aig is None:
+            M_aig = np.eye(3, 3, dtype=np.float32)
+            log.ODM_INFO("Cannot find feature homography between the raw image and undistorted image: %s" % align_photo.filename)
+        
         log.ODM_INFO("%s --> %s transform matrices: M_src=%s, M_dst=%s, M_src_dst=%s" % 
                         (photo.filename, align_photo.filename, M_ig, M_aig, M))
-        if M_ig is None or M_aig is None:
-            return M
-        else:
-            return np.array(np.dot(np.dot(np.linalg.inv(M_aig), M), M_ig))
+
+        warp_matrix = np.array(np.dot(np.linalg.inv(M_aig), np.dot(M, M_ig)))
+        return warp_matrix
 
     except Exception as e:
         return e
