@@ -626,30 +626,32 @@ def find_features_homography(image_gray, align_image_gray, feature_retention=0.7
     h, _ = cv2.findHomography(points_image, points_align_image, cv2.RANSAC)
     return h
 
-def find_rig_homography(photo, align_photo, image, align_image):
-    try:
-        image_undistorted = photo.undistorted(image)
-        align_image_undistorted = align_photo.undistorted(align_image)
-        M_ig, _ = find_features_homography(image, image_undistorted)
-        M_aig, _ = find_features_homography(align_image, align_image_undistorted)
-        M = photo.get_homography(align_photo)
+def find_rig_homography(photo, align_photo, image_gray, align_image_gray):
+    image_undistorted = photo.undistorted(image_gray)
+    align_image_undistorted = align_photo.undistorted(align_image_gray)
 
-        if M_ig is None:
-            M_ig = np.eye(3, 3, dtype=np.float32)
-            log.ODM_INFO("Cannot find feature homography between the raw image and undistorted image: %s" % photo.filename) 
-        
-        if M_aig is None:
-            M_aig = np.eye(3, 3, dtype=np.float32)
-            log.ODM_INFO("Cannot find feature homography between the raw image and undistorted image: %s" % align_photo.filename)
-        
-        log.ODM_INFO("%s --> %s transform matrices: M_src=%s, M_dst=%s, M_src_dst=%s" % 
-                        (photo.filename, align_photo.filename, M_ig, M_aig, M))
+    # convert undistorted image into 8 bit
+    image_undistorted_gray = to_8bit(image_undistorted[:,:,0])
+    align_image_undistorted_gray = to_8bit(align_image_undistorted[:,:,0])
 
-        warp_matrix = np.array(np.dot(np.linalg.inv(M_aig), np.dot(M, M_ig)))
-        return warp_matrix
+    # compute homography matrices
+    M_ig, _ = find_features_homography(image_gray, image_undistorted_gray)
+    M_aig, _ = find_features_homography(align_image_gray, align_image_undistorted_gray)
+    M = photo.get_homography(align_photo)
 
-    except Exception as e:
-        return e
+    if M_ig is None:
+        M_ig = np.eye(3, 3, dtype=np.float32)
+        log.ODM_INFO("Cannot find feature homography between the raw image and undistorted image for %s, use identity matrix instead" % photo.filename) 
+    
+    if M_aig is None:
+        M_aig = np.eye(3, 3, dtype=np.float32)
+        log.ODM_INFO("Cannot find feature homography between the raw image and undistorted image for %s, use identity matrix instead" % align_photo.filename)
+    
+    log.ODM_INFO("%s --> %s transform matrices: M_src=%s, M_dst=%s, M_src_dst=%s" % 
+                    (photo.filename, align_photo.filename, M_ig, M_aig, M))
+
+    warp_matrix = np.array(np.dot(np.linalg.inv(M_aig), np.dot(M, M_ig)))
+    return warp_matrix
 
 def normalize(im, min=None, max=None):
     width, height = im.shape
