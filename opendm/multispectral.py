@@ -643,11 +643,11 @@ def find_rig_homography(photo, align_photo, image_gray, align_image_gray):
         M_aig = np.eye(3, 3, dtype=np.float32)
         log.ODM_INFO("Cannot find feature homography between the raw image and undistorted image for %s, use identity matrix instead" % align_photo.filename)
     
-    log.ODM_INFO("%s --> %s transform matrices: M_src=%s, M_dst=%s, M_src_dst=%s" % 
-                    (photo.filename, align_photo.filename, M_ig, M_aig, M))
+    # log.ODM_INFO("%s --> %s transform matrices: M_src=%s, M_dst=%s, M_src_dst=%s" % (photo.filename, align_photo.filename, M_ig, M_aig, M))
 
     warp_matrix = np.array(np.dot(np.linalg.inv(M_aig), np.dot(M, M_ig)))
-    return warp_matrix
+    warp_matrix /= warp_matrix[2,2]
+    return warp_matrix 
 
 def normalize(im, min=None, max=None):
     width, height = im.shape
