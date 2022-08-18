@@ -627,16 +627,12 @@ def find_features_homography(image_gray, align_image_gray, feature_retention=0.7
     return h
 
 def find_rig_homography(photo, align_photo, image_gray, align_image_gray):
-    image_undistorted = photo.undistorted(image_gray)
-    align_image_undistorted = align_photo.undistorted(align_image_gray)
-
-    # convert undistorted image into 8 bit
-    image_undistorted_gray = to_8bit(image_undistorted[:,:,0])
-    align_image_undistorted_gray = to_8bit(align_image_undistorted[:,:,0])
+    image_undistorted_gray = photo.undistorted(image_gray)
+    align_image_undistorted_gray = align_photo.undistorted(align_image_gray)
 
     # compute homography matrices
-    M_ig, _ = find_features_homography(image_gray, image_undistorted_gray)
-    M_aig, _ = find_features_homography(align_image_gray, align_image_undistorted_gray)
+    M_ig = find_features_homography(image_gray, image_undistorted_gray)
+    M_aig = find_features_homography(align_image_gray, align_image_undistorted_gray)
     M = photo.get_homography(align_photo)
 
     if M_ig is None:
