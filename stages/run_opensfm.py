@@ -214,7 +214,8 @@ class ODMOpenSfMStage(types.ODM_Stage):
                     alignment_info = multispectral.compute_alignment_matrices(reconstruction.multi_camera, primary_band_name, tree.dataset_raw, s2p, p2s, 
                                                                               max_concurrency=args.max_concurrency,
                                                                               irradiance_by_hand=irradiance_info,
-                                                                              use_sun_sensor=args.radiometric_calibration=="camera+sun")
+                                                                              use_sun_sensor=args.radiometric_calibration=="camera+sun",
+                                                                              use_local_homography=args.band_alignment_local_homography)
                 else:
                     log.ODM_WARNING("Skipping band alignment")
                     alignment_info = {}

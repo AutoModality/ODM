@@ -320,7 +320,7 @@ def compute_band_irradiances(multi_camera):
 
     return band_irradiance_info
 
-def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p, p2s, max_concurrency=1, max_samples=30, irradiance_by_hand=None, use_sun_sensor=True):
+def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p, p2s, max_concurrency=1, max_samples=30, irradiance_by_hand=None, use_sun_sensor=True, use_local_homography=False):
     log.ODM_INFO("Computing band alignment")
 
     alignment_info = {}
@@ -329,7 +329,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
     for band in multi_camera:
         if band['name'] != primary_band_name:
             matrices_samples = []
-            use_local_warp_matrix = False # if band['name'] == 'LWIR' else False
+            use_local_warp_matrix = use_local_homography and band['name'] == 'LWIR'
             max_samples == max_samples if not use_local_warp_matrix else len(band['photos'])
 
             def parallel_compute_homography(photo):

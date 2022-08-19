@@ -203,6 +203,14 @@ def config(argv=None, parser=None):
                 'Can be one of: %(choices)s. Default: '
                 '%(default)s'))
 
+    parser.add_argument('--band-alignment-local-homography',
+            action=StoreTrue,
+            nargs=0,
+            default=True,
+            help=('Compute and use a local homography matrix for each individual raw image.'
+                 'Otherwise, compute a global homography matrix and use this matrix to warp all images. Default: '
+                 '%(default)s'))
+
     parser.add_argument('--max-concurrency',
                         metavar='<positive integer>',
                         action=StoreValue,
