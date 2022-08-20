@@ -1163,7 +1163,7 @@ class ODM_Photo:
                                                 self.get_size(),
                                                 cv2.CV_32F)
         # compute the undistorted 16 bit image
-        return cv2.remap(image, map1, map2, cv2.INTER_LINEAR)
+        return cv2.remap(image, map1, map2, cv2.INTER_NEAREST)
 
     def find_crop_bounds(self, warp_matrix, warp_mode=cv2.MOTION_HOMOGRAPHY):
         ''' compute the crop rectangle and the edges of the input image '''
