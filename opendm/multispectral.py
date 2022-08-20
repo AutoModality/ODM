@@ -526,7 +526,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
     if warp_matrix_init is not None: # initial rough alignment
         image_gray = align_image(image_gray, warp_matrix_init, 
                                 (align_image_gray.shape[1], align_image_gray.shape[0]), 
-                                flags=cv2.INTER_NEAREST)
+                                flags=cv2.INTER_LINEAR)
     else:
         if align_image_gray.shape[0] != image_gray.shape[0]:            
             image_gray = cv2.resize(image_gray, None,
