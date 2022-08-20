@@ -121,8 +121,8 @@ class ODMOpenSfMStage(types.ODM_Stage):
             else:
                 return image
 
-        def radiometric_calibrate(shot_id, image):            
-            photo = reconstruction.get_photo(shot_id)            
+        def radiometric_calibrate(shot_id, image):
+            photo = reconstruction.get_photo(shot_id)
 
             if photo.is_thermal():
                 return thermal.dn_to_temperature(photo, image, tree.dataset_raw)
@@ -153,7 +153,7 @@ class ODMOpenSfMStage(types.ODM_Stage):
                     #        image = multispectral.align_image(image, warp_matrix_init, ainfo_shot['dimension'], flags=cv2.INTER_LANCZOS4)
                     #    else:
                     #        image = resize_thermal_images(shot_id, image)
-                        flags = cv2.INTER_LINEAR #+ cv2.WARP_INVERSE_MAP
+                        flags = cv2.INTER_CUBIC #+ cv2.WARP_INVERSE_MAP
                     else:
                         flags = cv2.INTER_LINEAR
                     aligned_image = multispectral.align_image(image, ainfo_shot['warp_matrix'], ainfo_shot['dimension'], flags=flags)
