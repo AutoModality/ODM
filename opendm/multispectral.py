@@ -410,8 +410,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
                 alignment_info[band['name']] = matrices_all
 
                 if use_local_warp_matrix:
-                    # log.ODM_INFO("%s band will be aligned using local warp matrices %s" % (band['name'], matrices_all))
-                    pass
+                    log.ODM_DEBUG("%s band will be aligned using local warp matrices %s" % (band['name'], matrices_all))
                 else:
                     log.ODM_INFO("%s band will be aligned using global warp matrix %s (score: %s)" % (band['name'], best_candidate['warp_matrix'], best_candidate['score']))
             else:
@@ -473,8 +472,7 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
 
         if max_dim > 320:
             algo = 'feat'
-            result = compute_using(find_features_homography)
-            log.ODM_INFO("Feature warp matrix for %s --> %s: \n%s" % (photo.filename, align_photo.filename, str(result[0])))
+            result = compute_using(find_features_homography)            
 
             if result[0] is None:
                 algo = 'ecc'
@@ -492,12 +490,12 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
             else:
                 algo = 'ecc'
                 log.ODM_INFO("Using ECC for %s (this might take a bit)" % photo.filename)
-                result = compute_using(find_ecc_homography)
-            
-            log.ODM_INFO("ECC warp matrix for %s --> %s: \n%s" % (photo.filename, align_photo.filename, str(result[0])))
+                result = compute_using(find_ecc_homography)            
 
         if result[0] is None:
-            algo = None        
+            algo = None
+            
+        log.ODM_DEBUG("Warp matrix for %s --> %s: \n%s (algorithm: %s)" % (photo.filename, align_photo.filename, str(result[0]), algo))
 
         warp_matrix, dimension = result
         return warp_matrix, dimension, algo
@@ -612,7 +610,7 @@ def find_features_homography(image_gray, align_image_gray, feature_retention=0.7
     # Debug
     # imMatches = cv2.drawMatches(im1, kp_image, im2, kp_align_image, matches, None)
     # cv2.imwrite("matches.jpg", imMatches)
-    log.ODM_INFO("Good feature matches: %s" % len(matches))
+    log.ODM_DEBUG("Good feature matches: %s" % len(matches))
 
     # Extract location of good matches
     points_image = np.zeros((len(matches), 2), dtype=np.float32)
