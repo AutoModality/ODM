@@ -329,7 +329,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
     for band in multi_camera:
         if band['name'] != primary_band_name:
             matrices_samples = []
-            use_local_warp_matrix = use_local_homography and band['name'] == 'LWIR'
+            use_local_warp_matrix = use_local_homography # and band['name'] == 'LWIR'
             max_samples = len(band['photos']) # max_samples if not use_local_warp_matrix else len(band['photos'])
 
             def parallel_compute_homography(photo):
