@@ -675,7 +675,7 @@ def local_normalize(im):
     im = rank.equalize(norm, selem=selem)
     return im
 
-def align_image(image, warp_matrix, dimension, flags=cv2.INTER_LINEAR):
+def align_image(image, warp_matrix, dimension, flags=cv2.INTER_LINEAR):    
     if warp_matrix.shape == (3, 3):
         return cv2.warpPerspective(image, warp_matrix, dimension, flags=flags)
     else:
