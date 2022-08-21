@@ -206,7 +206,7 @@ def config(argv=None, parser=None):
     parser.add_argument('--band-alignment-local-homography',
             action=StoreTrue,
             nargs=0,
-            default=True,
+            default=False,
             help=('Compute and use a local homography matrix for each individual raw image.'
                  'Otherwise, compute a global homography matrix and use this matrix to warp all images. Default: '
                  '%(default)s'))
