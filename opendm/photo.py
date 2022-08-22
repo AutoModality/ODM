@@ -1133,10 +1133,10 @@ class ODM_Photo:
         
         C, _ = cv2.getOptimalNewCameraMatrix(self.cv2_camera_matrix(),
                                             self.cv2_distortion_coeff() if undistorted else None,
-                                            self.get_size(),1)
+                                            self.get_size(), alpha=0, centerPrincipalPoint=True)
         Cr, _ = cv2.getOptimalNewCameraMatrix(ref.cv2_camera_matrix(),
                                             ref.cv2_distortion_coeff() if undistorted else None,
-                                            ref.get_size(),1)
+                                            ref.get_size(), alpha=0, centerPrincipalPoint=True)
         CC = np.zeros((4,4))
         CC[0:3,0:3] = C
         CC[3,3]=1.
@@ -1155,7 +1155,7 @@ class ODM_Photo:
         new_cam_mat, _ = cv2.getOptimalNewCameraMatrix(self.cv2_camera_matrix(),
                                                        self.cv2_distortion_coeff(),
                                                        self.get_size(),
-                                                       1)
+                                                       alpha=0, centerPrincipalPoint=True)
         map1, map2 = cv2.initUndistortRectifyMap(self.cv2_camera_matrix(),
                                                 self.cv2_distortion_coeff(),
                                                 np.eye(3),
