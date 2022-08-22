@@ -386,9 +386,11 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
             # The idea is based on https://math.stackexchange.com/questions/3193637/distance-between-homogeneous-transforms
             for m1 in matrices_samples:
                 acc = 0.0
+                M1 = m1['warp_matrix']
 
                 for m2 in matrices_samples:
-                    correl = np.divide(np.square(np.dot(m1,m2)), np.multiply(np.dot(m1,m1), np.dot(m2,m2))) # 0 for same operations
+                    M2 = m2['warp_matrix']
+                    correl = np.divide(np.square(np.dot(M1,M2)), np.multiply(np.dot(M1,M1), np.dot(M2,M2))) # 0 for same operations
                     acc += abs(np.linalg.det(correl/np.linalg.norm(correl)))
 
                 m1['score'] = acc
