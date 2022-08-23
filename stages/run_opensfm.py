@@ -208,7 +208,7 @@ class ODMOpenSfMStage(types.ODM_Stage):
                                                                               max_samples=args.band_alignment_samples,
                                                                               irradiance_by_hand=irradiance_info,
                                                                               use_sun_sensor=args.radiometric_calibration=="camera+sun",
-                                                                              ecc_optimization=args.band_alignment_rig_optimization,
+                                                                              rig_optimization=args.band_alignment_rig_optimization,
                                                                               use_local_homography=args.band_alignment_local_homography)
                 else:
                     log.ODM_WARNING("Skipping band alignment")
