@@ -320,7 +320,8 @@ def compute_band_irradiances(multi_camera):
 
     return band_irradiance_info
 
-def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p, p2s, max_concurrency=1, max_samples=30, irradiance_by_hand=None, use_sun_sensor=True, use_local_homography=False):
+def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p, p2s, max_concurrency=1, max_samples=30, 
+                               irradiance_by_hand=None, use_sun_sensor=True, rig_optimization=False, use_local_homography=False):
     log.ODM_INFO("Computing band alignment")
 
     alignment_info = {}
@@ -330,7 +331,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
         if band['name'] != primary_band_name:
             matrices_samples = []
             use_local_warp_matrix = use_local_homography # and band['name'] == 'LWIR'
-            max_samples = max_samples if not use_local_warp_matrix else len(band['photos'])
+            max_samples = max_samples if not use_local_warp_matrix and max_samples > 0 and max_samples < len(band['photos']) else len(band['photos'])
 
             def parallel_compute_homography(photo):
                 filename = photo.filename
@@ -350,8 +351,9 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
                                                                       os.path.join(images_path, primary_band_photo.filename),
                                                                       photo,
                                                                       primary_band_photo,
-                                                                      irradiance_by_hand,
-                                                                      use_sun_sensor)
+                                                                      irradiance_by_hand,                                                                      
+                                                                      use_sun_sensor,
+                                                                      rig_optimization)
 
                     if warp_matrix is not None:
                         log.ODM_INFO("%s --> %s good match" % (filename, primary_band_photo.filename))
@@ -431,7 +433,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
 
     return alignment_info
 
-def compute_homography(image_filename, align_image_filename, photo, align_photo, irradiance_by_hand=None, use_sun_sensor=True):
+def compute_homography(image_filename, align_image_filename, photo, align_photo, irradiance_by_hand=None, use_sun_sensor=True, rig_optimization=False):
     try:
         # Convert images to grayscale if needed
         image = imread(image_filename, unchanged=True, anydepth=True)
@@ -497,9 +499,12 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
                 algo = 'rig'
                 log.ODM_INFO("Using camera rig relatives to compute warp matrix for %s (rig relatives: %s)" % (photo.filename, str(photo.get_rig_relatives())))
                 warp_matrix_intrinsic = find_rig_homography(photo, align_photo, image_gray, align_image_gray)
-                warp_matrix_ecc = find_ecc_homography(image_gray, align_image_gray, warp_matrix_init=warp_matrix_intrinsic)
-                warp_matrix_optimized = np.array(np.dot(warp_matrix_ecc, warp_matrix_intrinsic)) if warp_matrix_ecc is not None else warp_matrix_intrinsic
-                warp_matrix_optimized /= warp_matrix_optimized[2,2]
+                if rig_optimization:
+                    warp_matrix_ecc = find_ecc_homography(image_gray, align_image_gray, warp_matrix_init=warp_matrix_intrinsic)
+                    warp_matrix_optimized = np.array(np.dot(warp_matrix_ecc, warp_matrix_intrinsic)) if warp_matrix_ecc is not None else warp_matrix_intrinsic
+                    warp_matrix_optimized /= warp_matrix_optimized[2,2]
+                else:
+                    warp_matrix_optimized = warp_matrix_intrinsic
                 result = warp_matrix_optimized, (align_image_gray.shape[1], align_image_gray.shape[0])
 
             else:
@@ -527,8 +532,8 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
     min_dim = min(h, w)
 
     number_of_iterations = 1000 if min_dim > 300 else 5000
-    termination_eps = 1e-8 if min_dim > 300 else 1e-7
-    gaussian_filter_size = 9 if min_dim > 300 else 5
+    # termination_eps = 1e-8 if min_dim > 300 else 1e-7
+    gaussian_filter_size = 9 # if min_dim > 300 else 5
 
     while min_dim > 300:
         min_dim /= 2.0
