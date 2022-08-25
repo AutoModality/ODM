@@ -375,27 +375,27 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
 
             # Find the matrix that has the most common eigvals
             # among all matrices. That should be the "best" alignment.
-            # for m1 in matrices_samples:
-            #    acc = np.array([0.0,0.0,0.0])
-            #    e = m1['eigvals']
+            for m1 in matrices_samples:
+                acc = np.array([0.0,0.0,0.0])
+                e = m1['eigvals']
 
-            #    for m2 in matrices_samples:
-            #        acc += abs(e - m2['eigvals'])
+                for m2 in matrices_samples:
+                    acc += abs(e - m2['eigvals'])
 
-            #    m1['score'] = acc.sum()
+                m1['score'] = acc.sum()
 
             # Find the matrix that has the minimal distance from other matrices. That should be the "best" alignment.
             # The idea is based on https://math.stackexchange.com/questions/3193637/distance-between-homogeneous-transforms
-            for m1 in matrices_samples:
-                acc = 0.0
-                M1 = m1['warp_matrix']
+            # for m1 in matrices_samples:
+            #    acc = 0.0
+            #    M1 = m1['warp_matrix']
 
-                for m2 in matrices_samples:
-                    M2 = m2['warp_matrix']
-                    correl = np.divide(np.square(np.dot(M1,M2)), np.multiply(np.dot(M1,M1), np.dot(M2,M2))) # 0 for same operations
-                    acc += abs(np.linalg.det(correl/np.linalg.norm(correl)))
+            #    for m2 in matrices_samples:
+            #        M2 = m2['warp_matrix']
+            #        correl = np.divide(np.square(np.dot(M1,M2)), np.multiply(np.dot(M1,M1), np.dot(M2,M2))) # 0 for same operations
+            #        acc += abs(np.linalg.det(correl/np.linalg.norm(correl)))
 
-                m1['score'] = acc
+            #    m1['score'] = acc
 
             # Sort
             matrices_samples.sort(key=lambda x: x['score'], reverse=False)
@@ -533,7 +533,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
 
     number_of_iterations = 1000 if min_dim > 300 else 5000
     termination_eps = 1e-8 if min_dim > 300 else 1e-7
-    gaussian_filter_size = 9 # if min_dim > 300 else 5
+    gaussian_filter_size = 9 if min_dim > 300 else 5
 
     while min_dim > 300:
         min_dim /= 2.0
