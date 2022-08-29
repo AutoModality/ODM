@@ -373,18 +373,18 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
 
             parallel_map(parallel_compute_homography, band['photos'], max_concurrency, single_thread_fallback=False)
 
-            # Find the matrix that has the most common eigvals
+            # Method 1: Find the matrix that has the most common eigvals
             # among all matrices. That should be the "best" alignment.
-            for m1 in matrices_samples:
-                acc = np.array([0.0,0.0,0.0])
-                e = m1['eigvals']
+            # for m1 in matrices_samples:
+            #    acc = np.array([0.0,0.0,0.0])
+            #    e = m1['eigvals']
 
-                for m2 in matrices_samples:
-                    acc += abs(e - m2['eigvals'])
+            #    for m2 in matrices_samples:
+            #        acc += abs(e - m2['eigvals'])
 
-                m1['score'] = acc.sum()
+            #    m1['score'] = acc.sum()
 
-            # Find the matrix that has the minimal distance from other matrices. That should be the "best" alignment.
+            # Method 2: Find the matrix that has the minimal distance from other matrices. That should be the "best" alignment.
             # The idea is based on https://math.stackexchange.com/questions/3193637/distance-between-homogeneous-transforms
             # for m1 in matrices_samples:
             #    acc = 0.0
@@ -396,6 +396,24 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
             #        acc += abs(np.linalg.det(correl/np.linalg.norm(correl)))
 
             #    m1['score'] = acc
+
+            # Method 3: Find the matrix that has the most common projections
+            for m1 in matrices_samples:
+                score = 0.0
+
+                for m2 in matrices_samples:
+                    image_raw = imread(os.path.join(images_path, m2['filename']), unchanged=True, anydepth=True)
+                    if image_raw.shape[2] == 3:
+                        image_gray = to_8bit(cv2.cvtColor(image_raw, cv2.COLOR_BGR2GRAY))
+                    else:
+                        image_gray = to_8bit(image_raw[:,:,0])
+
+                    image_proj1 = align_image(image_gray, m1['warp_matrix'], m1['dimension'])
+                    image_proj2 = align_image(image_gray, m2['warp_matrix'], m2['dimension'])
+                    diff = abs(np.subtract(image_proj1, image_proj2))
+                    score += np.sum(diff)
+
+                m1['score'] = score
 
             # Sort
             matrices_samples.sort(key=lambda x: x['score'], reverse=False)
