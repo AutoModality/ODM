@@ -105,10 +105,10 @@ class ODMOpenSfMStage(types.ODM_Stage):
         def undistort_callback(shot_id, image):
             # for func in undistort_pipeline:
             #    image = func(shot_id, image)
-            
+
             if args.radiometric_calibration != "none":
                 image = radiometric_calibrate(shot_id, image)
-            if reconstruction.multi_camera:            
+            if reconstruction.multi_camera and not args.skip_band_alignment:            
                 image = align_to_primary_band(shot_id, image)
             
             # image = normalize_float_to_uint16(shot_id, image)
