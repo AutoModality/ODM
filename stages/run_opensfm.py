@@ -149,10 +149,6 @@ class ODMOpenSfMStage(types.ODM_Stage):
                 log.ODM_DEBUG("Aligning %s to %s (warp matrix: %s)" % (ainfo_shot['filename'], ainfo_shot['align_filename'], ainfo_shot['warp_matrix']))
                 if ainfo_shot is not None:
                     aligned_image = multispectral.align_image(image, ainfo_shot['warp_matrix'], ainfo_shot['dimension'])
-
-                    # cropped_bounds, _ = photo.find_crop_bounds(ainfo_shot['warp_matrix'])
-                    # (left, top, w, h) = tuple(int(i) for i in cropped_bounds)
-                    # cropped_image = aligned_image[top:top+h, left:left+w][:]
                     return aligned_image
                 else:
                     log.ODM_WARNING("Cannot align %s, no alignment matrix could be computed. Band alignment quality might be affected." % (shot_id))

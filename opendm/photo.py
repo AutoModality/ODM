@@ -80,112 +80,6 @@ def get_mm_per_unit(resolution_unit):
         log.ODM_WARNING("Unknown EXIF resolution unit value: {}".format(resolution_unit))
         return None
 
-########################################################################################################################
-# Adapting MicaSense image processing script:
-# https://github.com/micasense/imageprocessing/blob/236cd23978116fd4cdfc79e4cd1cdc68e1b004d8/micasense/imageutils.py
-# https://github.com/micasense/imageprocessing/blob/236cd23978116fd4cdfc79e4cd1cdc68e1b004d8/micasense/image.py
-########################################################################################################################
-# convert euler angles to a rotation matrix
-def rotations_degrees_to_rotation_matrix(rotation_degrees):
-    cx = np.cos(np.deg2rad(rotation_degrees[0]))
-    cy = np.cos(np.deg2rad(rotation_degrees[1]))
-    cz = np.cos(np.deg2rad(rotation_degrees[2]))
-    sx = np.sin(np.deg2rad(rotation_degrees[0]))
-    sy = np.sin(np.deg2rad(rotation_degrees[1]))
-    sz = np.sin(np.deg2rad(rotation_degrees[2]))
-
-    Rx = np.mat([  1,  0,  0,
-                    0, cx,-sx,
-                    0, sx, cx]).reshape(3,3)
-    Ry = np.mat([ cy,  0, sy,
-                    0,  1,  0,
-                    -sy,  0, cy]).reshape(3,3)
-    Rz = np.mat([ cz,-sz,  0,
-                    sz, cz,  0,
-                    0,  0,  1]).reshape(3,3)
-    R = Rx*Ry*Rz
-    return R
-
-def get_inner_rect(image_size, warp_matrix, distortion_coeffs, camera_matrix, warp_mode=cv2.MOTION_HOMOGRAPHY):
-    w = image_size[0]
-    h = image_size[1]
-
-    left_edge = np.array([np.ones(h)*0, np.arange(0, h)]).T
-    right_edge = np.array([np.ones(h)*(w-1), np.arange(0, h)]).T
-    top_edge = np.array([np.arange(0, w), np.ones(w)*0]).T
-    bottom_edge = np.array([np.arange(0, w), np.ones(w)*(h-1)]).T
-
-    left_map = map_points(left_edge, image_size, warp_matrix, distortion_coeffs, camera_matrix, warp_mode=warp_mode)
-    left_bounds = min_max(left_map)
-    right_map = map_points(right_edge, image_size, warp_matrix, distortion_coeffs, camera_matrix, warp_mode=warp_mode)
-    right_bounds = min_max(right_map)
-    top_map = map_points(top_edge, image_size, warp_matrix, distortion_coeffs, camera_matrix, warp_mode=warp_mode)
-    top_bounds = min_max(top_map)
-    bottom_map = map_points(bottom_edge, image_size, warp_matrix, distortion_coeffs, camera_matrix, warp_mode=warp_mode)
-    bottom_bounds = min_max(bottom_map)
-
-    bounds = Bounds()
-    bounds.max.x = right_bounds.min.x
-    bounds.max.y = bottom_bounds.min.y
-    bounds.min.x = left_bounds.max.x
-    bounds.min.y = top_bounds.max.y
-    edges = (left_map,right_map,top_map,bottom_map)
-    return bounds,edges
-
-def min_max(pts):
-    bounds = Bounds()
-    for p in pts:
-        if p[0] > bounds.max.x:
-            bounds.max.x = p[0]
-        if p[1] > bounds.max.y:
-            bounds.max.y = p[1]
-        if p[0] < bounds.min.x:
-            bounds.min.x = p[0]
-        if p[1] < bounds.min.y:
-            bounds.min.y = p[1]
-    return bounds
-
-def map_points(pts, image_size, warp_matrix, distortion_coeffs, camera_matrix, warp_mode=cv2.MOTION_HOMOGRAPHY):
-    # extra dimension makes opencv happy
-    pts = np.array([pts], dtype=np.float)
-    new_cam_mat, _ = cv2.getOptimalNewCameraMatrix(camera_matrix, distortion_coeffs, image_size, 1)
-    new_pts = cv2.undistortPoints(pts, camera_matrix, distortion_coeffs, P=new_cam_mat)
-    if warp_mode == cv2.MOTION_AFFINE:
-        new_pts = cv2.transform(new_pts, cv2.invertAffineTransform(warp_matrix))
-    if warp_mode == cv2.MOTION_HOMOGRAPHY:
-        new_pts =cv2.perspectiveTransform(new_pts,np.linalg.inv(warp_matrix).astype(np.float32))
-    #apparently the output order has changed in 4.1.1 (possibly earlier from 3.4.3)
-    if cv2.__version__<='3.4.4':
-        return new_pts[0]
-    else:
-        return new_pts[:,0,:]
-
-class BoundPoint(object):
-    def __init__(self, x=0, y=0):
-        self.x = x
-        self.y = y
-
-    def __str__(self):
-        return "(%f, %f)" % (self.x, self.y)
-
-    def __repr__(self):
-        return self.__str__()
-
-class Bounds(object):
-    def __init__(self):
-        arbitrary_large_value = 100000000
-        self.max = BoundPoint(-arbitrary_large_value, -arbitrary_large_value)
-        self.min = BoundPoint(arbitrary_large_value, arbitrary_large_value)
-
-    def __str__(self):
-        return "Bounds min: %s, max: %s" % (str(self.min), str(self.max))
-
-    def __repr__(self):
-        return self.__str__()
-########################################################################################################################
-# End of MicaSense image processing script
-########################################################################################################################
-
 class PhotoCorruptedException(Exception):
     pass
 
@@ -1089,7 +983,6 @@ class ODM_Photo:
         else:
             return 0.0
 
-
     ######################################################################################################################
     # Adapting MicaSense image processing script for thermal band alignment
     # https://github.com/micasense/imageprocessing/blob/236cd23978116fd4cdfc79e4cd1cdc68e1b004d8/micasense/imageutils.py
@@ -1121,6 +1014,28 @@ class ODM_Photo:
 
     def get_homography(self, ref, R=None, T=None, undistorted=True):
         ''' get the homography that maps from this image to the reference image '''
+
+        # convert euler angles to a rotation matrix
+        def rotations_degrees_to_rotation_matrix(rotation_degrees):
+            cx = np.cos(np.deg2rad(rotation_degrees[0]))
+            cy = np.cos(np.deg2rad(rotation_degrees[1]))
+            cz = np.cos(np.deg2rad(rotation_degrees[2]))
+            sx = np.sin(np.deg2rad(rotation_degrees[0]))
+            sy = np.sin(np.deg2rad(rotation_degrees[1]))
+            sz = np.sin(np.deg2rad(rotation_degrees[2]))
+
+            Rx = np.mat([  1,  0,  0,
+                            0, cx,-sx,
+                            0, sx, cx]).reshape(3,3)
+            Ry = np.mat([ cy,  0, sy,
+                            0,  1,  0,
+                            -sy,  0, cy]).reshape(3,3)
+            Rz = np.mat([ cz,-sz,  0,
+                            sz, cz,  0,
+                            0,  0,  1]).reshape(3,3)
+            R = Rx*Ry*Rz
+            return R
+                    
         if R is None:
             R = rotations_degrees_to_rotation_matrix(self.get_rig_relatives())
         if T is None:
@@ -1164,16 +1079,6 @@ class ODM_Photo:
                                                 cv2.CV_32F)
         # compute the undistorted 16 bit image
         return cv2.remap(image, map1, map2, cv2.INTER_LINEAR)
-
-    def find_crop_bounds(self, warp_matrix, warp_mode=cv2.MOTION_HOMOGRAPHY):
-        ''' compute the crop rectangle and the edges of the input image '''
-        bounds, edges = get_inner_rect(self.get_size(), warp_matrix, self.cv2_distortion_coeff(), self.cv2_camera_matrix(), warp_mode=cv2.MOTION_HOMOGRAPHY)
-
-        left = np.ceil(bounds.min.x)
-        top = np.ceil(bounds.min.y)
-        width = np.floor(bounds.max.x - bounds.min.x)
-        height = np.floor(bounds.max.y - bounds.min.y)
-        return (left, top, width, height), edges
 
     ######################################################################################################################
     # End of MicaSense image processing script
