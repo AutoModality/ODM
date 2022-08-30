@@ -400,6 +400,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
             # Method 3: Find the matrix that has the most common projections
             for m1 in matrices_samples:
                 score = 0.0
+                image_size = m1['warp_matrix']             
 
                 for m2 in matrices_samples:
                     image_raw = imread(os.path.join(images_path, m2['filename']), unchanged=True, anydepth=True)
@@ -410,10 +411,23 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
 
                     image_proj1 = align_image(image_gray, m1['warp_matrix'], m1['dimension'])
                     image_proj2 = align_image(image_gray, m2['warp_matrix'], m2['dimension'])
-                    diff = abs(np.subtract(image_proj1, image_proj2))
-                    score += np.sum(diff)
 
+                    margin = 0.2 # use 60% of image area to compare
+                    h, w = image_proj1.shape
+                    x1 = int(w * margin)
+                    y1 = int(h * margin)
+                    x2 = int(w * (1-margin))
+                    y2 = int(h * (1-margin))
+                    image_size = (x2-x1+1, y2-y1+1)
+
+                    image_proj1_samples = image_proj1[y1:y2, x1:x2]
+                    image_proj2_samples = image_proj2[y1:y2, x1:x2]
+                    diff = abs(np.subtract(image_proj1_samples, image_proj2_samples))
+                    score += np.sum(diff) / (w*h)
+
+                log.ODM_DEBUG("Warp matrix: %s (score: %s, sample pixels: %s x %s)" % (m1, score, image_size[0], image_size[1]))
                 m1['score'] = score
+                
 
             # Sort
             matrices_samples.sort(key=lambda x: x['score'], reverse=False)
