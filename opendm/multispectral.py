@@ -404,6 +404,8 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
 
                 for m2 in matrices_samples:
                     image_raw = imread(os.path.join(images_path, m2['filename']), unchanged=True, anydepth=True)
+                    photo_raw = next((p for p in band['photos'] if p.filename == m2['filename']), None)
+                    image_raw = radiometric_calibrate(photo_raw, image_raw, 'radiance', irradiance_by_hand, use_sun_sensor)
                     if image_raw.shape[2] == 3:
                         image_gray = to_8bit(cv2.cvtColor(image_raw, cv2.COLOR_BGR2GRAY))
                     else:
@@ -412,7 +414,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
                     image_proj1 = align_image(image_gray, m1['warp_matrix'], m1['dimension'])
                     image_proj2 = align_image(image_gray, m2['warp_matrix'], m2['dimension'])
 
-                    margin = 0.2 # use 60% of image area to compare
+                    margin = 0.1 # use 80% of image area to compare
                     h, w = image_proj1.shape
                     x1 = int(w * margin)
                     y1 = int(h * margin)
@@ -426,8 +428,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
                     score += np.sum(diff) / (w*h)
 
                 log.ODM_DEBUG("Warp matrix: %s (score: %s, sample pixels: %s x %s)" % (m1, score, image_size[0], image_size[1]))
-                m1['score'] = score
-                
+                m1['score'] = score                
 
             # Sort
             matrices_samples.sort(key=lambda x: x['score'], reverse=False)
