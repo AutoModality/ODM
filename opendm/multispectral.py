@@ -532,9 +532,16 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
                 log.ODM_INFO("Using camera rig relatives to compute warp matrix for %s (rig relatives: %s)" % (photo.filename, str(photo.get_rig_relatives())))
                 warp_matrix_intrinsic = find_rig_homography(photo, align_photo, image_gray, align_image_gray)
                 if rig_optimization:
+                    log.ODM_INFO("Using ECC to optimize the rig relatives warp matrix for %s" % photo.filename)
                     warp_matrix_ecc = find_ecc_homography(image_gray, align_image_gray, warp_matrix_init=warp_matrix_intrinsic)
-                    warp_matrix_optimized = np.array(np.dot(warp_matrix_ecc, warp_matrix_intrinsic)) if warp_matrix_ecc is not None else warp_matrix_intrinsic
-                    warp_matrix_optimized /= warp_matrix_optimized[2,2]
+                    if warp_matrix_ecc is not None:
+                        algo = 'rig+ecc'
+                        warp_matrix_optimized = np.array(np.dot(warp_matrix_ecc, warp_matrix_intrinsic))
+                        warp_matrix_optimized /= warp_matrix_optimized[2,2]
+                    else:
+                        warp_matrix_optimized = warp_matrix_intrinsic
+                        log.ODM_WARNING("Cannot compute ECC warp matrix for %s, use the rig relatives warp matrix instead" % photo.filename)
+                    
                 else:
                     warp_matrix_optimized = warp_matrix_intrinsic
                 result = warp_matrix_optimized, (align_image_gray.shape[1], align_image_gray.shape[0])
