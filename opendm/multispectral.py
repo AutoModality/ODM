@@ -618,9 +618,9 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
             if level != pyramid_levels:
                 log.ODM_INFO("Could not compute ECC warp_matrix at pyramid level %s, resetting matrix" % level)
                 warp_matrix = default_matrix * np.array([[1,1,2],[1,1,2],[0.5,0.5,1]], dtype=np.float32)**(1-(pyramid_levels+1))
-            else:
-                # warp_matrix = np.eye(3, 3, dtype=np.float32)
-                raise e
+            else:                
+                # raise e
+                return None
 
 
         if level != pyramid_levels:
