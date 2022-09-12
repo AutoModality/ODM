@@ -373,62 +373,50 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
 
             parallel_map(parallel_compute_homography, band['photos'], max_concurrency, single_thread_fallback=False)
 
-            # Method 1: Find the matrix that has the most common eigvals
-            # among all matrices. That should be the "best" alignment.
-            # for m1 in matrices_samples:
-            #    acc = np.array([0.0,0.0,0.0])
-            #    e = m1['eigvals']
+            if use_local_warp_matrix or max_samples > 100:
+                # Method 1 (faster): Find the matrix that has the most common eigvals among all matrices. That should be the "best" alignment.
+                for m1 in matrices_samples:
+                    acc = np.array([0.0,0.0,0.0])
+                    e = m1['eigvals']
 
-            #    for m2 in matrices_samples:
-            #        acc += abs(e - m2['eigvals'])
+                    for m2 in matrices_samples:
+                        acc += abs(e - m2['eigvals'])
 
-            #    m1['score'] = acc.sum()
+                    m1['score'] = acc.sum()
 
-            # Method 2: Find the matrix that has the minimal distance from other matrices. That should be the "best" alignment.
-            # The idea is based on https://math.stackexchange.com/questions/3193637/distance-between-homogeneous-transforms
-            # for m1 in matrices_samples:
-            #    acc = 0.0
-            #    M1 = m1['warp_matrix']
+            else:
+                # Method 2 (slower): Find the matrix that has the most common projections
+                for m1 in matrices_samples:
+                    score = 0.0
+                    image_size = m1['warp_matrix']
 
-            #    for m2 in matrices_samples:
-            #        M2 = m2['warp_matrix']
-            #        correl = np.divide(np.square(np.dot(M1,M2)), np.multiply(np.dot(M1,M1), np.dot(M2,M2))) # 0 for same operations
-            #        acc += abs(np.linalg.det(correl/np.linalg.norm(correl)))
+                    for m2 in matrices_samples:
+                        image_raw = imread(os.path.join(images_path, m2['filename']), unchanged=True, anydepth=True)
+                        photo_raw = next((p for p in band['photos'] if p.filename == m2['filename']), None)
+                        image_raw = radiometric_calibrate(photo_raw, image_raw, 'radiance', irradiance_by_hand, use_sun_sensor)
+                        if image_raw.shape[2] == 3:
+                            image_gray = to_8bit(cv2.cvtColor(image_raw, cv2.COLOR_BGR2GRAY))
+                        else:
+                            image_gray = to_8bit(image_raw[:,:,0])
 
-            #    m1['score'] = acc
+                        image_proj1 = align_image(image_gray, m1['warp_matrix'], m1['dimension'])
+                        image_proj2 = align_image(image_gray, m2['warp_matrix'], m2['dimension'])
 
-            # Method 3: Find the matrix that has the most common projections
-            for m1 in matrices_samples:
-                score = 0.0
-                image_size = m1['warp_matrix']             
+                        margin = 0.1 # use 80% of image area to compare
+                        h, w = image_proj1.shape
+                        x1 = int(w * margin)
+                        y1 = int(h * margin)
+                        x2 = int(w * (1-margin))
+                        y2 = int(h * (1-margin))
+                        image_size = (x2-x1+1, y2-y1+1)
 
-                for m2 in matrices_samples:
-                    image_raw = imread(os.path.join(images_path, m2['filename']), unchanged=True, anydepth=True)
-                    photo_raw = next((p for p in band['photos'] if p.filename == m2['filename']), None)
-                    image_raw = radiometric_calibrate(photo_raw, image_raw, 'radiance', irradiance_by_hand, use_sun_sensor)
-                    if image_raw.shape[2] == 3:
-                        image_gray = to_8bit(cv2.cvtColor(image_raw, cv2.COLOR_BGR2GRAY))
-                    else:
-                        image_gray = to_8bit(image_raw[:,:,0])
+                        image_proj1_samples = image_proj1[y1:y2, x1:x2]
+                        image_proj2_samples = image_proj2[y1:y2, x1:x2]
+                        diff = abs(np.subtract(image_proj1_samples, image_proj2_samples))
+                        score += np.sum(diff) / (w*h)
 
-                    image_proj1 = align_image(image_gray, m1['warp_matrix'], m1['dimension'])
-                    image_proj2 = align_image(image_gray, m2['warp_matrix'], m2['dimension'])
-
-                    margin = 0.1 # use 80% of image area to compare
-                    h, w = image_proj1.shape
-                    x1 = int(w * margin)
-                    y1 = int(h * margin)
-                    x2 = int(w * (1-margin))
-                    y2 = int(h * (1-margin))
-                    image_size = (x2-x1+1, y2-y1+1)
-
-                    image_proj1_samples = image_proj1[y1:y2, x1:x2]
-                    image_proj2_samples = image_proj2[y1:y2, x1:x2]
-                    diff = abs(np.subtract(image_proj1_samples, image_proj2_samples))
-                    score += np.sum(diff) / (w*h)
-
-                log.ODM_DEBUG("Warp matrix: %s (score: %s, sample pixels: %s x %s)" % (m1, score, image_size[0], image_size[1]))
-                m1['score'] = score                
+                    log.ODM_DEBUG("Warp matrix: %s (score: %s, sample pixels: %s x %s)" % (m1, score, image_size[0], image_size[1]))
+                    m1['score'] = score
 
             # Sort
             matrices_samples.sort(key=lambda x: x['score'], reverse=False)
