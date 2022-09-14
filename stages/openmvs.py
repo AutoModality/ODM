@@ -92,7 +92,7 @@ class ODMOpenMVSStage(types.ODM_Stage):
             if masks:
                 extra_config.append("--ignore-mask-label 0")
 
-            sharp = args.pc_geometric
+            sharp = args.pc_filter > 0 or args.pc_geometric
             with open(densify_ini_file, 'w+') as f:
                 f.write("Optimize = %s\n" % (7 if sharp else 3))
 
