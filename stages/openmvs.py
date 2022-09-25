@@ -94,7 +94,7 @@ class ODMOpenMVSStage(types.ODM_Stage):
 
             sharp = args.pc_geometric
             with open(densify_ini_file, 'w+') as f:
-                f.write("Optimize = %s\n" % (7 if sharp else 0))
+                f.write("Optimize = %s\n" % (7 if sharp else 3))
 
             def run_densify():
                 system.run('"%s" "%s" %s' % (context.omvs_densify_path, 
