@@ -24,7 +24,8 @@ externalproject_add(eigen34
 )
 
 SET(ARM64_CMAKE_ARGS "")
-if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64" )
+
+if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64" OR ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "arm64")
   SET(ARM64_CMAKE_ARGS -DOpenMVS_USE_SSE=OFF)
 endif()
 
@@ -52,7 +53,7 @@ ExternalProject_Add(${_proj_name}
   #--Download step--------------
   DOWNLOAD_DIR      ${SB_DOWNLOAD_DIR}
   GIT_REPOSITORY    https://github.com/OpenDroneMap/openMVS
-  GIT_TAG           288
+  GIT_TAG           291
   #--Update/Patch step----------
   UPDATE_COMMAND    ""
   #--Configure step-------------

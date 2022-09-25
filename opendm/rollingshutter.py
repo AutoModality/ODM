@@ -14,10 +14,14 @@ RS_DATABASE = {
     'dji fc7203': 20, # Mavic Mini v1
     'dji fc3170': 27, # DJI Mavic Air 2
     'dji fc3411': 32, # DJI Mavic Air 2S
+    
+    'hasselblad l1d-20c': lambda p: 47 if p.get_capture_megapixels() < 19 else 56, # DJI Mavic 2 Pro (at 16:10 => 16.8MP 47ms, at 4:3 => 19.9MP 56ms)
 
     'dji fc3582': lambda p: 26 if p.get_capture_megapixels() < 48 else 60, # DJI Mini 3 pro (at 48MP readout is 60ms, at 12MP it's 26ms) 
 
     'dji fc350': 30, # Inspire 1
+    
+    'yuneec e90': 44, # Yuneec E90
 
     'gopro hero4 black': 30, # GoPro Hero 4 Black
     'gopro hero8 black': 17, # GoPro Hero 8 Black
