@@ -1,9 +1,11 @@
 import os
+import numpy as np
 
-from osgeo import gdal
+from osgeo import gdal, gdal_array
 from opendm import io
 from opendm import log
 from opendm import types
+from opendm.cogeo import convert_to_cogeo
 from opendm.utils import copy_paths, get_processing_results_paths
 from opendm.ogctiles import build_3dtiles
 
@@ -44,6 +46,30 @@ class ODMPostProcess(types.ODM_Stage):
                                 break
                         else:
                             log.ODM_WARNING("Cannot open %s for writing, skipping GCP embedding" % product)
+
+        # Generate normalized DSM if both DSM and DTM exist
+        dsm = tree.path("odm_dem", "dsm.tif")
+        dtm = tree.path("odm_dem", "dtm.tif")
+        ndsm = tree.path("odm_dem", "ndsm.tif")
+        if os.path.isfile(dsm) and os.path.isfile(dtm):
+            dsm_ds = gdal.Open(dsm)
+            dsm_band = dsm_ds.GetRasterBand(1)
+            dsm_array = np.ma.masked_equal(dsm_band.ReadAsArray(), dsm_band.GetNoDataValue())
+
+            dtm_ds = gdal.Open(dtm)
+            dtm_band = dtm_ds.GetRasterBand(1)
+            dtm_array = np.ma.masked_equal(dtm_band.ReadAsArray(), dtm_band.GetNoDataValue())
+
+            # nDSM = DSM - DTM
+            ndsm_data = dsm_array - dtm_array
+            ndsm_ds = gdal_array.SaveArray(ndsm_data, ndsm, "GTIFF")
+            dsm_ds = None
+            dtm_ds = None
+            ndsm_ds = None
+            
+            if os.path.isfile(ndsm):
+                convert_to_cogeo(ndsm)
+
 
         if getattr(args, '3d_tiles'):
             build_3dtiles(args, tree, reconstruction, self.rerun())
