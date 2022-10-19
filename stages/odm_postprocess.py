@@ -52,26 +52,37 @@ class ODMPostProcess(types.ODM_Stage):
         dtm = tree.path("odm_dem", "dtm.tif")
         ndsm = tree.path("odm_dem", "ndsm.tif")
         if os.path.isfile(dsm) and os.path.isfile(dtm):
-            dsm_ds = gdal.Open(dsm)
-            dsm_band = dsm_ds.GetRasterBand(1)
-            dsm_array = np.ma.masked_equal(dsm_band.ReadAsArray(), dsm_band.GetNoDataValue())
+            try:
+                log.ODM_INFO("Generating normalized DSM: %s" % ndsm)
+                dsm_ds = gdal.Open(dsm)
+                dsm_band = dsm_ds.GetRasterBand(1)
+                dsm_array = np.ma.masked_equal(dsm_band.ReadAsArray(), dsm_band.GetNoDataValue())
 
-            dtm_ds = gdal.Open(dtm)
-            dtm_band = dtm_ds.GetRasterBand(1)
-            dtm_array = np.ma.masked_equal(dtm_band.ReadAsArray(), dtm_band.GetNoDataValue())
+                dtm_ds = gdal.Open(dtm)
+                dtm_band = dtm_ds.GetRasterBand(1)
+                dtm_array = np.ma.masked_equal(dtm_band.ReadAsArray(), dtm_band.GetNoDataValue())
 
-            # nDSM = DSM - DTM
-            ndsm_data = dsm_array - dtm_array
-            ndsm_ds = gdal_array.SaveArray(ndsm_data, ndsm, "GTIFF", dsm_ds)
+                # nDSM = DSM - DTM
+                ndsm_data = dsm_array - dtm_array
+                ndsm_ds = gdal_array.SaveArray(ndsm_data, ndsm, "GTIFF", dsm_ds)
 
-            # close the tiff files
-            no_data = dsm_band.GetNoDataValue()
-            dsm_ds = None
-            dtm_ds = None
-            ndsm_ds = None
-            
-            if os.path.isfile(ndsm):
-                convert_to_cogeo(ndsm)
+                # set same nodata value as DSM
+                no_data = dsm_band.GetNoDataValue()
+                ndsm_ds.GetRasterBand(1).SetNoDataValue(no_data)
+
+                # close the tiff files            
+                dsm_ds = None
+                dtm_ds = None
+                ndsm_ds = None                
+                
+                if os.path.isfile(ndsm):
+                    log.ODM_INFO("Generating normalized DSM finished.")
+                    convert_to_cogeo(ndsm)
+                else:
+                    log.ODM_WARNING("Generating normalized DSM failed.")
+                    
+            except Exception as e:
+                log.ODM_WARNING("Cannot generate normalized DSM. %s" % str(e))
 
 
         if getattr(args, '3d_tiles'):
