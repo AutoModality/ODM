@@ -63,12 +63,15 @@ class ODMPostProcess(types.ODM_Stage):
             # nDSM = DSM - DTM
             ndsm_data = dsm_array - dtm_array
             ndsm_ds = gdal_array.SaveArray(ndsm_data, ndsm, "GTIFF", dsm_ds)
+
+            # close the tiff files
+            no_data = dsm_band.GetNoDataValue()
             dsm_ds = None
             dtm_ds = None
             ndsm_ds = None
             
             if os.path.isfile(ndsm):
-                convert_to_cogeo(ndsm)
+                convert_to_cogeo(ndsm, no_data)
 
 
         if getattr(args, '3d_tiles'):

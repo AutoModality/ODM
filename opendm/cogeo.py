@@ -5,7 +5,7 @@ from opendm.concurrency import get_max_memory
 from opendm import io
 from opendm import log
 
-def convert_to_cogeo(src_path, blocksize=256, max_workers=1, compression="DEFLATE"):
+def convert_to_cogeo(src_path, blocksize=256, max_workers=1, compression="DEFLATE", no_data=None):
     """
     Guarantee that the .tif passed as an argument is a Cloud Optimized GeoTIFF (cogeo)
     The file is destructively converted into a cogeo.
@@ -32,11 +32,13 @@ def convert_to_cogeo(src_path, blocksize=256, max_workers=1, compression="DEFLAT
         'tmpfile': tmpfile,
         'compress': compression,
         'predictor': '2' if compression in ['LZW', 'DEFLATE'] else '1',
+        'no_data': 'none' if no_data == None else no_data,
     }
 
     try:
         system.run("gdal_translate "
                 "-of COG "
+                "-a_nodata {no_data}"
                 "-co NUM_THREADS={threads} "
                 "-co BLOCKSIZE={blocksize} "
                 "-co COMPRESS={compress} "
