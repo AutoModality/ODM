@@ -38,7 +38,7 @@ def convert_to_cogeo(src_path, blocksize=256, max_workers=1, compression="DEFLAT
     try:
         system.run("gdal_translate "
                 "-of COG "
-                "-a_nodata {no_data}"
+                "-a_nodata {no_data} "
                 "-co NUM_THREADS={threads} "
                 "-co BLOCKSIZE={blocksize} "
                 "-co COMPRESS={compress} "

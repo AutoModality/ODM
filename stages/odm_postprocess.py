@@ -71,7 +71,7 @@ class ODMPostProcess(types.ODM_Stage):
             ndsm_ds = None
             
             if os.path.isfile(ndsm):
-                convert_to_cogeo(ndsm, no_data)
+                convert_to_cogeo(ndsm, no_data=no_data)
 
 
         if getattr(args, '3d_tiles'):
