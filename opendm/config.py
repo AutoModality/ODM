@@ -437,6 +437,14 @@ def config(argv=None, parser=None):
                         help='Reduce the memory usage needed for depthmap fusion by splitting large scenes into tiles. Turn this on if your machine doesn\'t have much RAM and/or you\'ve set --pc-quality to high or ultra. Experimental. '
                              'Default: %(default)s')
 
+    parser.add_argument('--pc-sharp',
+                        metavar='<integer: 0 <= x <= 7>',
+                        action=StoreValue,
+                        default=5,
+                        type=int,
+                        help='Improve the accuracy of the point cloud by applying filters to sharpen the point cloud, but reduces the completeness of the reconstruction. '
+                             'Default: %(default)s')
+
     parser.add_argument('--pc-geometric',
                         action=StoreTrue,
                         nargs=0,
