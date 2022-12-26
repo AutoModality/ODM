@@ -226,6 +226,15 @@ def config(argv=None, parser=None):
                               'processes. Peak memory requirement is ~1GB per '
                               'thread and 2 megapixel image resolution. Default: %(default)s'))
 
+    parser.add_argument('--depthmap-resolution',
+                        metavar='<positive float>',
+                        action=StoreValue,
+                        type=float,
+                        default=640,
+                        help=('Controls the density of the point cloud by setting the resolution of the depthmap images. Higher values take longer to compute '
+                              'but produce denser point clouds. Overrides the value calculated by --pc-quality.'
+                              'Default: %(default)s'))
+
     parser.add_argument('--use-hybrid-bundle-adjustment',
                         action=StoreTrue,
                         nargs=0,
@@ -465,6 +474,20 @@ def config(argv=None, parser=None):
         default=18.0,
         help='Simple Morphological Filter window radius parameter (meters). '
                 'Default: %(default)s')
+
+    parser.add_argument('--texturing-data-term',
+                        metavar='<string>',
+                        action=StoreValue,
+                        default='gmi',
+                        choices=['gmi', 'area'],
+                        help=('When texturing the 3D mesh, for each triangle, choose to prioritize images with sharp features (gmi) or those that cover the largest area (area). Default: %(default)s'))
+
+    parser.add_argument('--texturing-outlier-removal-type',
+                        metavar='<string>',
+                        action=StoreValue,
+                        default='gauss_clamping',
+                        choices=['none', 'gauss_clamping', 'gauss_damping'],
+                        help=('Type of photometric outlier removal method. Can be one of: %(choices)s. Default: %(default)s'))
 
     parser.add_argument('--texturing-skip-global-seam-leveling',
                         action=StoreTrue,

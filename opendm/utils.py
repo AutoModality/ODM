@@ -14,6 +14,10 @@ class NumpyEncoder(json.JSONEncoder):
 
 
 def get_depthmap_resolution(args, photos):
+    if 'depthmap_resolution_is_set' in args:
+        # Override pc-quality
+        return int(args.depthmap_resolution)
+    
     max_dims = find_largest_photo_dims(photos)
     min_dim = 320 # Never go lower than this
 
