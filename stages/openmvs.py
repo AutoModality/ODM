@@ -60,7 +60,7 @@ class ODMOpenMVSStage(types.ODM_Stage):
             log.ODM_INFO("Estimating depthmaps")
             number_views_fuse = 2
             densify_ini_file = os.path.join(tree.openmvs, 'Densify.ini')
-            subres_levels = 2 # The number of lower resolutions to process before estimating output resolution depthmap.
+            subres_levels = 0 # The number of lower resolutions to process before estimating output resolution depthmap, 0=disabled
             filter_point_th = -20
 
             config = [
