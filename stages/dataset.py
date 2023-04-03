@@ -46,15 +46,18 @@ def load_images_database(database_file):
 class ODMLoadDatasetStage(types.ODM_Stage):
     def process(self, args, outputs):
         outputs['start_time'] = system.now_raw()
-        tree = types.ODM_Tree(args.project_path, args.gcp, args.geo)
+        tree = types.ODM_Tree(args.project_path, args.gcp, args.geo, args.align)
         outputs['tree'] = tree
 
-        if args.time and io.file_exists(tree.benchmarking):
+        if io.file_exists(tree.benchmarking):
             # Delete the previously made file
-            os.remove(tree.benchmarking)
-            with open(tree.benchmarking, 'a') as b:
-                b.write('ODM Benchmarking file created %s\nNumber of Cores: %s\n\n' % (system.now(), context.num_cores))
-    
+            try:
+                os.remove(tree.benchmarking)
+                with open(tree.benchmarking, 'a') as b:
+                    b.write('ODM Benchmarking file created %s\nNumber of Cores: %s\n\n' % (system.now(), context.num_cores))
+            except Exception as e:
+                log.ODM_WARNING("Cannot write benchmark file: %s" % str(e))
+
         # check if the image filename is supported
         def valid_image_filename(filename):
             (pathfn, ext) = os.path.splitext(filename)
@@ -62,7 +65,6 @@ class ODMLoadDatasetStage(types.ODM_Stage):
 
         # Get supported images from dir
         def get_images(in_dir):
-            log.ODM_DEBUG(in_dir)
             entries = os.listdir(in_dir)
             valid, rejects = [], []
             for f in entries:
@@ -153,14 +155,14 @@ class ODMLoadDatasetStage(types.ODM_Stage):
                 if args.sky_removal:
                     # For each image that :
                     #  - Doesn't already have a mask, AND
-                    #  - Is not nadir (or if orientation info is missing), AND
+                    #  - Is not nadir (or if orientation info is missing, or if camera lens is fisheye), AND
                     #  - There are no spaces in the image filename (OpenSfM requirement)
                     # Automatically generate a sky mask
                     
                     # Generate list of sky images
                     sky_images = []
                     for p in photos:
-                        if p.mask is None and (p.pitch is None or (abs(p.pitch) > 20)) and (not " " in p.filename):
+                        if p.mask is None and (args.camera_lens in ['fisheye', 'spherical'] or p.pitch is None or (abs(p.pitch) > 20)) and (not " " in p.filename):
                             sky_images.append({'file': os.path.join(images_dir, p.filename), 'p': p})
 
                     if len(sky_images) > 0:

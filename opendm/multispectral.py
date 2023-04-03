@@ -415,7 +415,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
                         diff = abs(np.subtract(image_proj1_samples, image_proj2_samples))
                         score += np.sum(diff) / (w*h)
 
-                    log.ODM_DEBUG("Warp matrix: %s (score: %s, sample pixels: %s x %s)" % (m1, score, image_size[0], image_size[1]))
+                    # log.ODM_INFO("Warp matrix: %s (score: %s, sample pixels: %s x %s)" % (m1, score, image_size[0], image_size[1]))
                     m1['score'] = score
 
             # Sort
@@ -446,7 +446,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
                 alignment_info[band['name']] = matrices_all
 
                 if use_local_warp_matrix:
-                    log.ODM_DEBUG("%s band will be aligned using local warp matrices %s" % (band['name'], matrices_all))
+                    log.ODM_INFO("%s band will be aligned using local warp matrices %s" % (band['name'], matrices_all))
                 else:
                     log.ODM_INFO("%s band will be aligned using global warp matrix %s (score: %s)" % (band['name'], best_candidate['warp_matrix'], best_candidate['score']))
             else:
@@ -543,7 +543,7 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
         if result[0] is None:
             algo = None
             
-        log.ODM_DEBUG("Warp matrix for %s --> %s: \n%s (algorithm: %s)" % (photo.filename, align_photo.filename, str(result[0]), algo))
+        # log.ODM_INFO("Warp matrix for %s --> %s: \n%s (algorithm: %s)" % (photo.filename, align_photo.filename, str(result[0]), algo))
 
         warp_matrix, dimension = result
         return warp_matrix, dimension, algo
@@ -657,7 +657,7 @@ def find_features_homography(image_gray, align_image_gray, feature_retention=0.7
     # Debug
     # imMatches = cv2.drawMatches(im1, kp_image, im2, kp_align_image, matches, None)
     # cv2.imwrite("matches.jpg", imMatches)
-    log.ODM_DEBUG("Good feature matches: %s" % len(matches))
+    # log.ODM_INFO("Good feature matches: %s" % len(matches))
 
     # Extract location of good matches
     points_image = np.zeros((len(matches), 2), dtype=np.float32)
