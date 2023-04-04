@@ -376,7 +376,7 @@ def config(argv=None, parser=None):
             action=StoreTrue,
             nargs=0,
             default=False,
-            help='Classify the point cloud outputs using a Simple Morphological Filter. '
+            help='Classify the point cloud outputs. '
             'You can control the behavior of this option by tweaking the --dem-* parameters. '
             'Default: '
             '%(default)s')
@@ -419,6 +419,13 @@ def config(argv=None, parser=None):
                         type=float,
                         default=0,
                         help='Filters the point cloud by keeping only a single point around a radius N (in meters). This can be useful to limit the output resolution of the point cloud and remove duplicate points. Set to 0 to disable sampling. '
+                             'Default: %(default)s')
+
+    parser.add_argument('--pc-skip-geometric',
+                        action=StoreTrue,
+                        nargs=0,
+                        default=False,
+                        help='Geometric estimates improve the accuracy of the point cloud by computing geometrically consistent depthmaps but may not be usable in larger datasets. This flag disables geometric estimates. '
                              'Default: %(default)s')
 
     parser.add_argument('--pc-tile',
@@ -508,6 +515,20 @@ def config(argv=None, parser=None):
                         help=('Keep faces in the mesh that are not seen in any camera. '
                               'Default:  %(default)s'))
 
+    parser.add_argument('--texturing-single-material',
+                        action=StoreTrue,
+                        nargs=0,
+                        default=False,
+                        help=('Generate OBJs that have a single material and a single texture file instead of multiple ones. '
+                              'Default:  %(default)s'))
+
+    parser.add_argument('--gltf',
+                        action=StoreTrue,
+                        nargs=0,
+                        default=False,
+                        help=('Generate single file Binary glTF (GLB) textured models. '
+                              'Default:  %(default)s'))
+
     parser.add_argument('--gcp',
                         metavar='<path string>',
                         action=StoreValue,
@@ -525,11 +546,11 @@ def config(argv=None, parser=None):
                         action=StoreValue,
                         default=None,
                         help=('Path to the image geolocation file containing the camera center coordinates used for georeferencing. '
-                              'If you don''t have values for omega/phi/kappa you can set them to 0. '
+                              'If you don\'t have values for yaw/pitch/roll you can set them to 0. '
                               'The file needs to '
                               'use the following format: \n'
                               'EPSG:<code> or <+proj definition>\n'
-                              'image_name geo_x geo_y geo_z [omega (degrees)] [phi (degrees)] [kappa (degrees)] [horz accuracy (meters)] [vert accuracy (meters)]\n'
+                              'image_name geo_x geo_y geo_z [yaw (degrees)] [pitch (degrees)] [roll (degrees)] [horz accuracy (meters)] [vert accuracy (meters)]\n'
                               'Default: %(default)s'))
 
     parser.add_argument('--align',
@@ -700,6 +721,20 @@ def config(argv=None, parser=None):
                         version='ODM {0}'.format(__version__),
                         help='Displays version number and exits. ')
 
+    parser.add_argument('--video-limit',
+                        type=int,
+                        action=StoreValue,
+                        default=500,
+                        metavar='<positive integer>',
+                        help='Maximum number of frames to extract from video files for processing. Set to 0 for no limit. Default: %(default)s')
+
+    parser.add_argument('--video-resolution',
+                        type=int,
+                        action=StoreValue,
+                        default=4000,
+                        metavar='<positive integer>',
+                        help='The maximum output resolution of extracted video frames in pixels. Default: %(default)s')
+    
     parser.add_argument('--split',
                         type=int,
                         action=StoreValue,

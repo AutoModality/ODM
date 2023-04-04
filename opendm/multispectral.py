@@ -183,7 +183,7 @@ def compute_irradiance(photo, use_sun_sensor=True):
 def radiometric_calibrate(photo, image, image_type='reflectance', irradiance_by_hand=None, use_sun_sensor=True):
     if irradiance_by_hand is not None:
         band_irradiance_mean = irradiance_by_hand.get(photo.band_name)
-        
+
     if not photo.is_thermal():
         return dn_to_reflectance(photo, image, band_irradiance_mean, use_sun_sensor) if image_type == 'reflectance' else dn_to_radiance(photo, image)
     else:
@@ -311,7 +311,7 @@ def compute_band_irradiances(multi_camera):
         for p in get_photos_by_band(multi_camera, band['name']):
             hirradiance = p.get_horizontal_irradiance()
             if hirradiance is not None:
-                irradiances.append(hirradiance)                    
+                irradiances.append(hirradiance)
         if len(irradiances) > 0:
             band_irradiance_mean = sum(irradiances) / len(irradiances)
 
@@ -320,7 +320,7 @@ def compute_band_irradiances(multi_camera):
 
     return band_irradiance_info
 
-def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p, p2s, max_concurrency=1, max_samples=30, 
+def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p, p2s, max_concurrency=1, max_samples=30,
                                irradiance_by_hand=None, use_sun_sensor=True, rig_optimization=False, use_local_homography=False):
     log.ODM_INFO("Computing band alignment")
 
@@ -351,7 +351,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
                                                                       os.path.join(images_path, primary_band_photo.filename),
                                                                       photo,
                                                                       primary_band_photo,
-                                                                      irradiance_by_hand,                                                                      
+                                                                      irradiance_by_hand,
                                                                       use_sun_sensor,
                                                                       rig_optimization)
 
@@ -508,7 +508,7 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
 
         if max_dim > 320:
             algo = 'feat'
-            result = compute_using(find_features_homography)            
+            result = compute_using(find_features_homography)
 
             if result[0] is None:
                 algo = 'ecc'
@@ -530,7 +530,7 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
                     else:
                         warp_matrix_optimized = warp_matrix_intrinsic
                         log.ODM_WARNING("Cannot compute ECC warp matrix for %s, use the rig relatives warp matrix instead" % photo.filename)
-                    
+
                 else:
                     warp_matrix_optimized = warp_matrix_intrinsic
                 result = warp_matrix_optimized, (align_image_gray.shape[1], align_image_gray.shape[0])
@@ -538,11 +538,11 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
             else:
                 algo = 'ecc'
                 log.ODM_INFO("Using ECC for %s (this might take a bit)" % photo.filename)
-                result = compute_using(find_ecc_homography)            
+                result = compute_using(find_ecc_homography)
 
         if result[0] is None:
             algo = None
-            
+
         # log.ODM_INFO("Warp matrix for %s --> %s: \n%s (algorithm: %s)" % (photo.filename, align_photo.filename, str(result[0]), algo))
 
         warp_matrix, dimension = result
@@ -557,6 +557,18 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
     # https://stackoverflow.com/questions/45997891/cv2-motion-euclidean-for-the-warp-mode-in-ecc-image-alignment-method
     pyramid_levels = 0
     h,w = image_gray.shape
+    max_dim = max(h, w)
+
+    max_size = 1280
+
+    if max_dim > max_size:
+        if max_dim == w:
+            f = max_size / w
+        else:
+            f = max_size / h
+        image_gray = cv2.resize(image_gray, None, fx=f, fy=f, interpolation=cv2.INTER_AREA)
+        h,w = image_gray.shape
+
     min_dim = min(h, w)
 
     number_of_iterations = 1000 if min_dim > 300 else 5000
@@ -575,7 +587,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
         image_gray = align_image(image_gray, warp_matrix_init, (align_image_gray.shape[1], align_image_gray.shape[0]),
                                  flags=(cv2.INTER_LINEAR if (fx < 1.0 and fy < 1.0) else cv2.INTER_CUBIC))
     else:
-        if align_image_gray.shape[0] != image_gray.shape[0]:            
+        if align_image_gray.shape[0] != image_gray.shape[0]:
             image_gray = cv2.resize(image_gray, None,
                                     fx=fx,
                                     fy=fy,
@@ -593,7 +605,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
         image_gray_pyr.insert(0, cv2.resize(image_gray_pyr[0], None, fx=1/2, fy=1/2,
                                 interpolation=cv2.INTER_AREA))
         align_image_pyr.insert(0, cv2.resize(align_image_pyr[0], None, fx=1/2, fy=1/2,
-                                interpolation=cv2.INTER_AREA))    
+                                interpolation=cv2.INTER_AREA))
 
     for level in range(pyramid_levels+1):
         ig = gradient(gaussian(normalize(image_gray_pyr[level])))
@@ -608,14 +620,14 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
         criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT,
                 number_of_iterations, eps)
 
-        try:            
+        try:
             log.ODM_INFO("Computing ECC pyramid level %s using Gaussian filter size %s" % (level, gaussian_filter_size))
             _, warp_matrix = cv2.findTransformECC(ig, aig, warp_matrix, cv2.MOTION_HOMOGRAPHY, criteria, inputMask=None, gaussFiltSize=gaussian_filter_size)
         except Exception as e:
             if level != pyramid_levels:
                 log.ODM_INFO("Could not compute ECC warp_matrix at pyramid level %s, resetting matrix" % level)
                 warp_matrix = default_matrix * np.array([[1,1,2],[1,1,2],[0.5,0.5,1]], dtype=np.float32)**(1-(pyramid_levels+1))
-            else:                
+            else:
                 # raise e
                 return None
 
@@ -682,17 +694,17 @@ def find_rig_homography(photo, align_photo, image_gray, align_image_gray):
 
     if M_ig is None:
         M_ig = np.eye(3, 3, dtype=np.float32)
-        log.ODM_INFO("Cannot find feature homography between the raw image and undistorted image for %s, use identity matrix instead" % photo.filename) 
-    
+        log.ODM_INFO("Cannot find feature homography between the raw image and undistorted image for %s, use identity matrix instead" % photo.filename)
+
     if M_aig is None:
         M_aig = np.eye(3, 3, dtype=np.float32)
         log.ODM_INFO("Cannot find feature homography between the raw image and undistorted image for %s, use identity matrix instead" % align_photo.filename)
-    
+
     # log.ODM_INFO("%s --> %s transform matrices: M_src=%s, M_dst=%s, M_src_dst=%s" % (photo.filename, align_photo.filename, M_ig, M_aig, M))
 
     warp_matrix = np.array(np.dot(np.linalg.inv(M_aig), np.dot(M, M_ig)))
     warp_matrix /= warp_matrix[2,2]
-    return warp_matrix 
+    return warp_matrix
 
 def normalize(im, min=None, max=None):
     width, height = im.shape
@@ -722,7 +734,9 @@ def local_normalize(im):
     im = rank.equalize(norm, selem=selem)
     return im
 
-def align_image(image, warp_matrix, dimension, flags=cv2.INTER_LINEAR):    
+def align_image(image, warp_matrix, dimension, flags=cv2.INTER_LINEAR):
+    image = resize_match(image, dimension)
+    
     if warp_matrix.shape == (3, 3):
         return cv2.warpPerspective(image, warp_matrix, dimension, flags=flags)
     else:
@@ -750,5 +764,20 @@ def to_8bit(image, force_normalize=False):
     image[image > 255] = 255
     image[image < 0] = 0
     image = image.astype(np.uint8)
+
+    return image
+
+
+def resize_match(image, dimension):
+    h, w = image.shape[0], image.shape[1]
+    mw, mh = dimension
+
+    if w != mw or h != mh:
+        fx = mw/w
+        fy = mh/h
+        image = cv2.resize(image, None,
+                fx=fx,
+                fy=fx,
+                interpolation=(cv2.INTER_AREA if (fx < 1.0 and fy < 1.0) else cv2.INTER_LANCZOS4))
 
     return image

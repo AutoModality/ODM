@@ -46,21 +46,22 @@ def classify(lasFile, scalar, slope, threshold, window):
     log.ODM_INFO('Created %s in %s' % (lasFile, datetime.now() - start))
     return lasFile
 
-def rectify(lasFile, debug=False, reclassify_threshold=5, min_area=750, min_points=500):
+def rectify(lasFile, reclassify_threshold=5, min_area=750, min_points=500):
     start = datetime.now()
 
     try:
+
         log.ODM_INFO("Rectifying {} using with [reclassify threshold: {}, min area: {}, min points: {}]".format(lasFile, reclassify_threshold, min_area, min_points))
         run_rectification(
-            input=lasFile, output=lasFile, debug=debug, \
+            input=lasFile, output=lasFile, \
             reclassify_plan='median', reclassify_threshold=reclassify_threshold, \
             extend_plan='surrounding', extend_grid_distance=5, \
             min_area=min_area, min_points=min_points)
 
+        log.ODM_INFO('Created %s in %s' % (lasFile, datetime.now() - start))
     except Exception as e:
-        raise Exception("Error rectifying ground in file %s: %s" % (lasFile, str(e)))
+        log.ODM_WARNING("Error rectifying ground in file %s: %s" % (lasFile, str(e)))
 
-    log.ODM_INFO('Created %s in %s' % (lasFile, datetime.now() - start))
     return lasFile
 
 error = None
@@ -358,3 +359,11 @@ def window_filter_2d(arr, nodata, window, kernel_size, filter):
     win_arr[nodata_locs] = nodata
     win_arr = win_arr[window[0] - expanded_window[0] : window[2] - expanded_window[0], window[1] - expanded_window[1] : window[3] - expanded_window[1]]
     return win_arr
+
+
+def get_dem_radius_steps(stats_file, steps, resolution, multiplier = 1.0):
+    radius_steps = [point_cloud.get_spacing(stats_file, resolution) * multiplier]
+    for _ in range(steps - 1):
+        radius_steps.append(radius_steps[-1] * math.sqrt(2))
+    
+    return radius_steps

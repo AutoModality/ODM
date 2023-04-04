@@ -135,9 +135,12 @@ def clean():
     safe_remove(os.path.join("SuperBuild", "install"))
 
 def dist():
-    if not os.path.exists("SuperBuild\\download"):
+    if not os.path.exists("SuperBuild\\install"):
         print("You need to run configure.py build before you can run dist")
         exit(1)
+
+    if not os.path.exists("SuperBuild\\download"):
+        os.mkdir("SuperBuild\\download")
 
     # Download VC++ runtime
     vcredist_path = os.path.join("SuperBuild", "download", "vc_redist.x64.zip")
@@ -190,7 +193,7 @@ def dist():
             z.extractall("innosetup")
 
     # Run
-    cs_flags = ""
+    cs_flags = '/DSKIP_SIGN=1'
     if args.code_sign_cert_path:
         cs_flags = '"/Ssigntool=%s sign /f %s /fd SHA1 /t http://timestamp.sectigo.com $f"' % (signtool_path, args.code_sign_cert_path)
     run("innosetup\\iscc /Qp " + cs_flags  + " \"innosetup.iss\"")

@@ -37,7 +37,7 @@ class ODMOpenSfMStage(types.ODM_Stage):
         octx.feature_matching(self.rerun())
         self.update_progress(30)
         octx.create_tracks(self.rerun())
-        octx.reconstruct(args.rolling_shutter, self.rerun())
+        octx.reconstruct(args.rolling_shutter, reconstruction.is_georeferenced(), self.rerun())
         octx.extract_cameras(tree.path("cameras.json"), self.rerun())
         self.update_progress(70)
 
@@ -67,18 +67,18 @@ class ODMOpenSfMStage(types.ODM_Stage):
             # being replaced below. It's an isolated use case.
 
             octx.export_stats(self.rerun())
-        
+
         self.update_progress(75)
 
         # We now switch to a geographic CRS
         if reconstruction.is_georeferenced() and (not io.file_exists(tree.opensfm_topocentric_reconstruction) or self.rerun()):
-            octx.run('export_geocoords --reconstruction --proj "%s" --offset-x %s --offset-y %s' % 
+            octx.run('export_geocoords --reconstruction --proj "%s" --offset-x %s --offset-y %s' %
                 (reconstruction.georef.proj4(), reconstruction.georef.utm_east_offset, reconstruction.georef.utm_north_offset))
             shutil.move(tree.opensfm_reconstruction, tree.opensfm_topocentric_reconstruction)
             shutil.move(tree.opensfm_geocoords_reconstruction, tree.opensfm_reconstruction)
         else:
             log.ODM_WARNING("Will skip exporting %s" % tree.opensfm_geocoords_reconstruction)
-        
+
         self.update_progress(80)
 
         updated_config_flag_file = octx.path('updated_config.txt')
@@ -108,9 +108,9 @@ class ODMOpenSfMStage(types.ODM_Stage):
 
             if args.radiometric_calibration != "none":
                 image = radiometric_calibrate(shot_id, image)
-            if reconstruction.multi_camera and not args.skip_band_alignment:            
+            if reconstruction.multi_camera and not args.skip_band_alignment:
                 image = align_to_primary_band(shot_id, image)
-            
+
             # image = normalize_float_to_uint16(shot_id, image)
 
             return image
@@ -163,10 +163,10 @@ class ODMOpenSfMStage(types.ODM_Stage):
                     image[image<0] = 0
                     image[image>2] = 2
                     image *= 32768
-                else:                    
+                else:
                     image *= 100
                     image += 27315
-            
+
             image[image<0] = 0
             image[image>65535] = 65535
             return image.astype(np.uint16)
@@ -182,9 +182,10 @@ class ODMOpenSfMStage(types.ODM_Stage):
         image_list_override = None
 
         if reconstruction.multi_camera:
-            
+
             # Undistort only secondary bands
-            image_list_override = [os.path.join(tree.dataset_raw, p.filename) for p in photos] # if p.band_name.lower() != primary_band_name.lower()
+            primary_band_name = multispectral.get_primary_band_name(reconstruction.multi_camera, args.primary_band)
+            image_list_override = [os.path.join(tree.dataset_raw, p.filename) for p in photos if p.band_name.lower() != primary_band_name.lower()]
 
             # We backup the original reconstruction.json, tracks.csv
             # then we augment them by duplicating the primary band
@@ -196,11 +197,10 @@ class ODMOpenSfMStage(types.ODM_Stage):
             s2p, p2s = None, None
 
             if not io.file_exists(added_shots_file) or self.rerun():
-                primary_band_name = multispectral.get_primary_band_name(reconstruction.multi_camera, args.primary_band)
                 s2p, p2s = multispectral.compute_band_maps(reconstruction.multi_camera, primary_band_name)
-                
+
                 if not args.skip_band_alignment:
-                    alignment_info = multispectral.compute_alignment_matrices(reconstruction.multi_camera, primary_band_name, tree.dataset_raw, s2p, p2s, 
+                    alignment_info = multispectral.compute_alignment_matrices(reconstruction.multi_camera, primary_band_name, tree.dataset_raw, s2p, p2s,
                                                                               max_concurrency=args.max_concurrency,
                                                                               max_samples=args.band_alignment_samples,
                                                                               irradiance_by_hand=irradiance_info,
@@ -210,9 +210,9 @@ class ODMOpenSfMStage(types.ODM_Stage):
                 else:
                     log.ODM_WARNING("Skipping band alignment")
                     alignment_info = {}
-                    
+
                 log.ODM_INFO("Adding shots to reconstruction")
-                
+
                 octx.backup_reconstruction()
                 octx.add_shots_to_reconstruction(p2s)
                 octx.touch(added_shots_file)
@@ -226,7 +226,7 @@ class ODMOpenSfMStage(types.ODM_Stage):
         if reconstruction.multi_camera:
             octx.restore_reconstruction_backup()
 
-            # Undistort primary band and write undistorted 
+            # Undistort primary band and write undistorted
             # reconstruction.json, tracks.csv
             octx.convert_and_undistort(self.rerun(), undistort_callback, runId='primary')
 
@@ -235,7 +235,7 @@ class ODMOpenSfMStage(types.ODM_Stage):
         else:
             log.ODM_WARNING('Found a valid OpenSfM NVM reconstruction file in: %s' %
                             tree.opensfm_reconstruction_nvm)
-        
+
         if reconstruction.multi_camera:
             log.ODM_INFO("Multiple bands found")
 
@@ -250,9 +250,9 @@ class ODMOpenSfMStage(types.ODM_Stage):
                         primary_band_name = multispectral.get_primary_band_name(reconstruction.multi_camera, args.primary_band)
                     if p2s is None:
                         s2p, p2s = multispectral.compute_band_maps(reconstruction.multi_camera, primary_band_name)
-                    
+
                     for fname in p2s:
-                        
+
                         # Primary band maps to itself
                         if band['name'] == primary_band_name:
                             img_map[add_image_format_extension(fname, 'tif')] = add_image_format_extension(fname, 'tif')
@@ -267,7 +267,7 @@ class ODMOpenSfMStage(types.ODM_Stage):
                     nvm.replace_nvm_images(tree.opensfm_reconstruction_nvm, img_map, nvm_file)
                 else:
                     log.ODM_WARNING("Found existing NVM file %s" % nvm_file)
-                    
+
         # Skip dense reconstruction if necessary and export
         # sparse reconstruction instead
         if args.fast_orthophoto:
