@@ -557,18 +557,6 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=1000,
     # https://stackoverflow.com/questions/45997891/cv2-motion-euclidean-for-the-warp-mode-in-ecc-image-alignment-method
     pyramid_levels = 0
     h,w = image_gray.shape
-    max_dim = max(h, w)
-
-    max_size = 1280
-
-    if max_dim > max_size:
-        if max_dim == w:
-            f = max_size / w
-        else:
-            f = max_size / h
-        image_gray = cv2.resize(image_gray, None, fx=f, fy=f, interpolation=cv2.INTER_AREA)
-        h,w = image_gray.shape
-
     min_dim = min(h, w)
 
     number_of_iterations = 1000 if min_dim > 300 else 5000
@@ -734,9 +722,7 @@ def local_normalize(im):
     im = rank.equalize(norm, selem=selem)
     return im
 
-def align_image(image, warp_matrix, dimension, flags=cv2.INTER_LINEAR):
-    image = resize_match(image, dimension)
-    
+def align_image(image, warp_matrix, dimension, flags=cv2.INTER_LINEAR):    
     if warp_matrix.shape == (3, 3):
         return cv2.warpPerspective(image, warp_matrix, dimension, flags=flags)
     else:
@@ -767,7 +753,7 @@ def to_8bit(image, force_normalize=False):
 
     return image
 
-
+# Need further review the use of this method
 def resize_match(image, dimension):
     h, w = image.shape[0], image.shape[1]
     mw, mh = dimension
