@@ -752,21 +752,13 @@ class ODM_Photo:
             return self.exposure_time / (self.fnumber * self.fnumber)
 
     def get_horizontal_irradiance(self):
+        scale = self.get_irradiance_scale()
         if self.horizontal_irradiance is not None:
-            if self.irradiance_scale_to_si is not None:
-                scale = self.irradiance_scale_to_si
-            elif self.camera_make == 'MicaSense':
-                # Micasense DLS2 but the metadata is missing the scale, assume 0.01
-                # see https://github.com/micasense/imageprocessing/issues/47
-                scale = 0.01
-            else:
-                # assume 1.0
-                scale = 1.0
-            
             return self.horizontal_irradiance * scale
-        elif self.camera_make == "DJI" and self.spectral_irradiance is not None:
-            # Phantom 4 Multispectral saves this value in @drone-dji:Irradiance
-            return self.spectral_irradiance
+        elif self.spectral_irradiance is not None:
+            return self.spectral_irradiance * scale
+        else:
+            return None
     
     def get_sun_sensor(self):
         if self.sun_sensor is not None:
@@ -774,19 +766,26 @@ class ODM_Photo:
             # and XMP:SunSensorSensitivity might
             # require additional logic. If these two tags are present, 
             # then sun_sensor is not in physical units?
-            return self.sun_sensor / 65535.0 # normalize uint16 (is this correct?)
+            return self.sun_sensor / 65535.0 # normalize uint16 (assumed)
         elif self.spectral_irradiance is not None:
-            if self.irradiance_scale_to_si is not None:
-                scale = self.irradiance_scale_to_si
-            elif self.camera_make == 'MicaSense':
-                # Micasense DLS2 but the metadata is missing the scale, assume 0.01
-                # see https://github.com/micasense/imageprocessing/issues/47
-                scale = 0.01
-            else:
-                # assume 1.0
-                scale = 1.0
-            
-            return self.spectral_irradiance * scale
+            return self.spectral_irradiance * self.get_irradiance_scale()
+        else:
+            return None
+
+    def get_irradiance_scale(self):
+        scale = 1.0
+        if self.irradiance_scale_to_si is not None:
+            scale = self.irradiance_scale_to_si
+        elif self.camera_make == 'MicaSense':
+            # In the case of Micasense DLS2 missing the scale metadata, 
+            # multiply the SpectralIrradiance and HorizontalIrradiance by 0.01 to get to W/m2/nm.
+            # See https://github.com/micasense/imageprocessing/issues/47
+            scale = 0.01
+        elif self.camera_make == 'DJI':
+            # Phantom 4 Multispectral saves irridiance in @drone-dji:Irradiance and Camera:Irradiance
+            scale = 1.0 / 65535.0 # normalize uint16 (assumed)
+                    
+        return scale
 
     def get_dls_pose(self):
         if self.dls_yaw is not None:
