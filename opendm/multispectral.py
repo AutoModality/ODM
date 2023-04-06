@@ -84,10 +84,10 @@ def dn_to_radiance(photo, image):
     if gain is not None and exposure_time is not None:
         image /= (gain * exposure_time)
 
-    image *= a1
-
-    if gain_adjustment is not None:
+    if photo.camera_make == "DJI" and gain_adjustment is not None:
         image *= gain_adjustment
+    else:
+        image *= a1
 
     return image
 

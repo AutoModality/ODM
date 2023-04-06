@@ -783,7 +783,7 @@ class ODM_Photo:
             scale = 0.01
         elif self.camera_make == 'DJI':
             # Phantom 4 Multispectral saves irridiance in @drone-dji:Irradiance and Camera:Irradiance
-            scale = 1.0 / 65535.0 # normalize uint16 (assumed)
+            scale = 1.0 / math.pi
                     
         return scale
 
