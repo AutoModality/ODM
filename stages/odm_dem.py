@@ -29,8 +29,15 @@ class ODMDEMStage(types.ODM_Stage):
             ignore_resolution = True
             pseudo_georeference = True
 
+        pc_quality_scale = {
+            'ultra': 1.0,
+            'high': 2.0,
+            'medium': 4.0,
+            'low': 8.0,
+            'lowest': 16.0
+        }
         resolution = gsd.cap_resolution(args.dem_resolution, tree.opensfm_reconstruction, 
-                                        gsd_scaling=1.0,
+                                        gsd_scaling=pc_quality_scale[args.pc_quality],
                                         ignore_gsd=args.ignore_gsd,
                                         ignore_resolution=ignore_resolution and args.ignore_gsd,
                                         has_gcp=reconstruction.has_gcp())
