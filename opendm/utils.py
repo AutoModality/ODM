@@ -29,16 +29,16 @@ def get_depthmap_resolution(args, photos):
         multiplier = 1
         
         if megapixels < 6:
-            multiplier = 2
+            multiplier = 1
         elif megapixels > 42:
-            multiplier = 0.5
+            multiplier = 0.25
         
         pc_quality_scale = {
-            'ultra': 0.5,
-            'high': 0.25,
-            'medium': 0.125,
-            'low': 0.0675,
-            'lowest': 0.03375
+            'ultra': 1.0,
+            'high': 0.5,
+            'medium': 0.25,
+            'low': 0.125,
+            'lowest': 0.0625
         }
 
         return max(min_dim, int(max_dim * pc_quality_scale[args.pc_quality] * multiplier))
