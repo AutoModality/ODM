@@ -28,8 +28,8 @@ def get_depthmap_resolution(args, photos):
         megapixels = (w * h) / 1e6
         multiplier = 1
         
-        if megapixels < 6:
-            multiplier = 1
+        if megapixels > 6:
+            multiplier = 0.5
         elif megapixels > 42:
             multiplier = 0.25
         
