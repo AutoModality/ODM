@@ -63,7 +63,7 @@ class ODMeshingStage(types.ODM_Stage):
                     dsm_resolution *= 8.0
 
                 mesh.create_25dmesh(tree.filtered_point_cloud, tree.odm_25dmesh,
-                        dsm_radius=dsm_radius,
+                        radius_steps=[str(dsm_radius)],
                         dsm_resolution=dsm_resolution, 
                         depth=self.params.get('oct_tree'),
                         maxVertexCount=self.params.get('max_vertex'),
