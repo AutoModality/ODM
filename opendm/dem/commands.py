@@ -322,10 +322,10 @@ def median_smoothing(geotiff_path, output_path, smoothing_iterations=1, window_s
             cols_end= numpy.minimum(cols + window_size, shape[1])
             windows = numpy.dstack((rows, cols, rows_end, cols_end)).reshape(-1, 4)
 
-            filter = functools.partial(ndimage.median_filter, size=5, output=dtype, mode='nearest')
+            filter = functools.partial(ndimage.median_filter, size=9, output=dtype, mode='nearest')
 
             # threading backend and GIL released filter are important for memory efficiency and multi-core performance
-            window_arrays = Parallel(n_jobs=num_workers, backend='threading')(delayed(window_filter_2d)(arr, nodata , window, 5, filter) for window in windows)
+            window_arrays = Parallel(n_jobs=num_workers, backend='threading')(delayed(window_filter_2d)(arr, nodata , window, 9, filter) for window in windows)
 
             for window, win_arr in zip(windows, window_arrays):
                 arr[window[0]:window[2], window[1]:window[3]] = win_arr
