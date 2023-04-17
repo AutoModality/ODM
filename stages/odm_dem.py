@@ -100,7 +100,7 @@ class ODMDEMStage(types.ODM_Stage):
                     commands.create_dem(
                             dem_input,
                             product,
-                            output_type='idw' if product == 'dtm' else args.dem_interpolation,
+                            output_type=args.dtm_interpolation if product == 'dtm' else args.dsm_interpolation,
                             radiuses=list(map(str, radius_steps)),
                             gapfill=args.dem_gapfill_steps > 0,
                             outdir=odm_dem_root,
