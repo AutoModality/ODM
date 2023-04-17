@@ -578,7 +578,7 @@ def config(argv=None, parser=None):
     parser.add_argument('--dem-interpolation',
                         metavar='<string>',
                         action=StoreValue,
-                        default='max',
+                        default='idw',
                         choices=['max', 'mean', 'idw'],
                         help=('Choose the interpolation method to calculate a cell value using points within a given radius. '
                             'Can be one of: %(choices)s. Default: '
