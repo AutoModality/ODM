@@ -54,13 +54,12 @@ class ODMeshingStage(types.ODM_Stage):
                                                     ignore_gsd=args.ignore_gsd,
                                                     ignore_resolution=(not reconstruction.is_georeferenced()) and args.ignore_gsd,
                                                     has_gcp=reconstruction.has_gcp()) / 100.0
+                if args.fast_orthophoto:
+                    dsm_resolution *= 2.0
+
                 dsm_radius = dsm_resolution * math.sqrt(2)
 
                 log.ODM_INFO('ODM 2.5D DSM resolution: %s' % dsm_resolution)
-                
-                if args.fast_orthophoto:
-                    dsm_radius *= 2
-                    dsm_resolution *= 8.0
 
                 mesh.create_25dmesh(tree.filtered_point_cloud, tree.odm_25dmesh,
                         radius_steps=[str(dsm_radius)],
