@@ -627,10 +627,10 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=2000,
 
     return warp_matrix
 
-def find_features_homography(image_gray, align_image_gray, feature_retention=0.75, min_match_count=10):
+def find_features_homography(image_gray, align_image_gray, feature_retention=0.75, min_match_count=10, min_num_features=10000):
 
     # Detect SIFT features and compute descriptors.
-    detector = cv2.SIFT_create(nfeatures=10000, contrastThreshold=0.09)
+    detector = cv2.SIFT_create(nfeatures=min_num_features)
     kp_image, desc_image = detector.detectAndCompute(image_gray, None)
     kp_align_image, desc_align_image = detector.detectAndCompute(align_image_gray, None)
 
