@@ -575,6 +575,24 @@ def config(argv=None, parser=None):
                         help='Use this tag to build a DSM (Digital Surface Model, ground + objects) using a progressive '
                              'morphological filter. Check the --dem* parameters for finer tuning. Default: %(default)s')
 
+    parser.add_argument('--dtm-interpolation',
+                        metavar='<string>',
+                        action=StoreValue,
+                        default='idw',
+                        choices=['min', 'max', 'mean', 'idw'],
+                        help=('Choose the DTM interpolation method to calculate a cell value using points within a given radius. '
+                            'Can be one of: %(choices)s. Default: '
+                            '%(default)s'))
+
+    parser.add_argument('--dsm-interpolation',
+                        metavar='<string>',
+                        action=StoreValue,
+                        default='idw',
+                        choices=['min', 'max', 'mean', 'idw'],
+                        help=('Choose the DSM interpolation method to calculate a cell value using points within a given radius. '
+                            'Can be one of: %(choices)s. Default: '
+                            '%(default)s'))
+
     parser.add_argument('--dem-gapfill-steps',
                         metavar='<positive integer>',
                         action=StoreValue,

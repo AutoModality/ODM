@@ -35,7 +35,7 @@ class ODMeshingStage(types.ODM_Stage):
         
         self.update_progress(50)
 
-        # Always generate a 2.5D mesh
+        # Always generate a 2.5D mesh for texturing and orthophoto projection
         # unless --use-3dmesh is set.
         if not args.use_3dmesh:
             if not io.file_exists(tree.odm_25dmesh) or self.rerun():
@@ -43,24 +43,23 @@ class ODMeshingStage(types.ODM_Stage):
                 log.ODM_INFO('Writing ODM 2.5D Mesh file in: %s' % tree.odm_25dmesh)
 
                 pc_quality_scale = {
-                    'ultra': 1.0,
-                    'high': 2.0,
-                    'medium': 4.0,
-                    'low': 8.0,
-                    'lowest': 16.0
+                    'ultra': 2.0, # capped to 2X
+                    'high': 4.0,
+                    'medium': 8.0,
+                    'low': 16.0,
+                    'lowest': 16.0 # capped to 16X
                 }
                 dsm_resolution = gsd.cap_resolution(args.dem_resolution, tree.opensfm_reconstruction,
                                                     gsd_scaling=pc_quality_scale[args.pc_quality],
                                                     ignore_gsd=args.ignore_gsd,
                                                     ignore_resolution=(not reconstruction.is_georeferenced()) and args.ignore_gsd,
                                                     has_gcp=reconstruction.has_gcp()) / 100.0
+                if args.fast_orthophoto:
+                    dsm_resolution *= 2.0
+
                 dsm_radius = dsm_resolution * math.sqrt(2)
 
                 log.ODM_INFO('ODM 2.5D DSM resolution: %s' % dsm_resolution)
-                
-                if args.fast_orthophoto:
-                    dsm_radius *= 2
-                    dsm_resolution *= 8.0
 
                 mesh.create_25dmesh(tree.filtered_point_cloud, tree.odm_25dmesh,
                         radius_steps=[str(dsm_radius)],
