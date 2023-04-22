@@ -562,9 +562,9 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=2000,
     if (min_dim <= 300):
         number_of_iterations = 5000
         termination_eps = 1e-6
-        gaussian_filter_size = 11 # a constant since there is only one pyramid level
+        gaussian_filter_size = 9 # a constant since there is only one pyramid level
     else:
-        gaussian_filter_size = 3 # will be doubled in each pyramid level iteration
+        gaussian_filter_size = 5 # will be increased in each pyramid level iteration
 
     while min_dim > 300:
         min_dim /= 2.0
@@ -576,7 +576,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=2000,
     fy = align_image_gray.shape[0] / image_gray.shape[0]
     if warp_matrix_init is not None: # initial rough alignment
         image_gray = align_image(image_gray, warp_matrix_init, (align_image_gray.shape[1], align_image_gray.shape[0]),
-                                 flags=(cv2.INTER_LINEAR if (fx < 1.0 and fy < 1.0) else cv2.INTER_LANCZOS4))
+                                 flags=(cv2.INTER_LINEAR if (fx < 1.0 and fy < 1.0) else cv2.INTER_CUBIC))
     else:
         if align_image_gray.shape[0] != image_gray.shape[0]:
             image_gray = cv2.resize(image_gray, None,
@@ -614,7 +614,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=2000,
         try:
             log.ODM_INFO("Computing ECC pyramid level %s using Gaussian filter size %s" % (level, gaussian_filter_size))
             _, warp_matrix = cv2.findTransformECC(ig, aig, warp_matrix, cv2.MOTION_HOMOGRAPHY, criteria, inputMask=None, gaussFiltSize=gaussian_filter_size)
-            gaussian_filter_size = gaussian_filter_size * 2 + 1
+            gaussian_filter_size = gaussian_filter_size + level * 2
         except Exception as e:
             if level != pyramid_levels:
                 log.ODM_INFO("Could not compute ECC warp_matrix at pyramid level %s, resetting matrix" % level)
