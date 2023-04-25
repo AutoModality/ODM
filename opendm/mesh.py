@@ -25,8 +25,9 @@ def create_25dmesh(inPointCloud, outMesh, radius_steps=["0.05"], dsm_resolution=
     commands.create_dem(
             inPointCloud,
             'mesh_dsm',
-            output_type='mean',
+            output_type='idw',
             radiuses=radius_steps,
+            power=1,
             gapfill=True,
             outdir=tmp_directory,
             resolution=dsm_resolution,

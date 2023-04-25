@@ -49,7 +49,7 @@ def json_base():
     return {'pipeline': []}
 
 
-def json_gdal_base(filename, output_type, radius, resolution=1, bounds=None):
+def json_gdal_base(filename, output_type, radius, power=1, resolution=1, bounds=None):
     """ Create initial JSON for PDAL pipeline containing a Writer element """
     json = json_base()
 
@@ -57,7 +57,7 @@ def json_gdal_base(filename, output_type, radius, resolution=1, bounds=None):
         'type': 'writers.gdal',
         'resolution': resolution,
         'radius': radius,
-        'power': 2.0, # IDW distance exponent
+        'power': power, # IDW distance exponent
         'filename': filename,
         'output_type': output_type,
         'data_type': 'float'
