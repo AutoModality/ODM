@@ -57,12 +57,12 @@ class ODMeshingStage(types.ODM_Stage):
                 if args.fast_orthophoto:
                     dsm_resolution *= 2.0
 
-                dsm_radius = dsm_resolution * math.sqrt(2)
+                radius_steps = [str(dsm_resolution * math.sqrt(2)), str(dsm_resolution * 2)]
 
                 log.ODM_INFO('ODM 2.5D DSM resolution: %s' % dsm_resolution)
 
                 mesh.create_25dmesh(tree.filtered_point_cloud, tree.odm_25dmesh,
-                        radius_steps=[str(dsm_radius)],
+                        radius_steps=radius_steps,
                         dsm_resolution=dsm_resolution, 
                         depth=self.params.get('oct_tree'),
                         maxVertexCount=self.params.get('max_vertex'),
