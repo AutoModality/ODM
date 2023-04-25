@@ -57,6 +57,7 @@ def json_gdal_base(filename, output_type, radius, resolution=1, bounds=None):
         'type': 'writers.gdal',
         'resolution': resolution,
         'radius': radius,
+        'power': 2.0, # IDW distance exponent
         'filename': filename,
         'output_type': output_type,
         'data_type': 'float'
