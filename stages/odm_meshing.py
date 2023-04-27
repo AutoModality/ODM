@@ -80,7 +80,8 @@ class ODMeshingStage(types.ODM_Stage):
                         samples=self.params.get('samples'),
                         available_cores=args.max_concurrency,
                         method='poisson' if args.fast_orthophoto else 'gridded',
-                        smooth_dsm=True)
+                        smooth_dsm=True,
+                        use_dtm=args.texturing_use_dtm)
                 
                 if io.file_exists(tree.filtered_point_cloud_classified):
                     os.remove(tree.filtered_point_cloud_classified)
