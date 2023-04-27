@@ -475,6 +475,12 @@ def config(argv=None, parser=None):
         help='Simple Morphological Filter window radius parameter (meters). '
                 'Default: %(default)s')
 
+    parser.add_argument('--texturing-use-dtm',
+                        action=StoreTrue,
+                        nargs=0,
+                        default=False,
+                        help=('Choose to use 2.5D DSM or DTM to project textures. Default:  %(default)s'))
+
     parser.add_argument('--texturing-data-term',
                         metavar='<string>',
                         action=StoreValue,

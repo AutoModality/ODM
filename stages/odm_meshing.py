@@ -8,6 +8,7 @@ from opendm import mesh
 from opendm import gsd
 from opendm import types
 from opendm.dem import commands
+from opendm.dem.ground_rectification import pdal
 
 class ODMeshingStage(types.ODM_Stage):
     def process(self, args, outputs):
@@ -61,7 +62,17 @@ class ODMeshingStage(types.ODM_Stage):
 
                 log.ODM_INFO('ODM 2.5D DSM resolution: %s' % dsm_resolution)
 
-                mesh.create_25dmesh(tree.filtered_point_cloud, tree.odm_25dmesh,
+                dem_input = tree.filtered_point_cloud
+                if args.texturing_use_dtm:
+                    pdal.run_pdaltranslate_smrf(tree.filtered_point_cloud,
+                                                tree.filtered_point_cloud_classified,
+                                                args.smrf_scalar,
+                                                args.smrf_slope,
+                                                args.smrf_threshold,
+                                                args.smrf_window)
+                    dem_input = tree.filtered_point_cloud_classified
+
+                mesh.create_25dmesh(dem_input, tree.odm_25dmesh,
                         radius_steps=radius_steps,
                         dsm_resolution=dsm_resolution, 
                         depth=self.params.get('oct_tree'),
@@ -70,6 +81,9 @@ class ODMeshingStage(types.ODM_Stage):
                         available_cores=args.max_concurrency,
                         method='poisson' if args.fast_orthophoto else 'gridded',
                         smooth_dsm=True)
+                
+                if io.file_exists(tree.filtered_point_cloud_classified):
+                    os.remove(tree.filtered_point_cloud_classified)
             else:
                 log.ODM_WARNING('Found a valid ODM 2.5D Mesh file in: %s' %
                                 tree.odm_25dmesh)

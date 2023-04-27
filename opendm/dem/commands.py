@@ -158,7 +158,7 @@ def create_dem(input_point_cloud, dem_type, output_type='max', radiuses=['0.56']
         
         d = pdal.json_gdal_base(q['filename'], output_type, q['radius'], power, resolution, q['bounds'])
 
-        if dem_type == 'dtm':
+        if dem_type == 'dtm' or dem_type == 'mesh_dtm':
             d = pdal.json_add_classification_filter(d, 2)
 
         if decimation is not None:
