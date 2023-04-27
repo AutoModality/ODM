@@ -8,7 +8,7 @@ from opendm import mesh
 from opendm import gsd
 from opendm import types
 from opendm.dem import commands
-from opendm.dem.ground_rectification import pdal
+from opendm.dem import pdal
 
 class ODMeshingStage(types.ODM_Stage):
     def process(self, args, outputs):
