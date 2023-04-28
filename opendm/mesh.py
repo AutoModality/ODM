@@ -9,7 +9,8 @@ from opendm import point_cloud
 from scipy import signal
 import numpy as np
 
-def create_25dmesh(inPointCloud, outMesh, radius_steps=["0.05"], dsm_resolution=0.05, depth=8, samples=1, maxVertexCount=100000, available_cores=None, method='gridded', smooth_dsm=True, use_dtm=False):
+def create_25dmesh(inPointCloud, outMesh, radius_steps=["0.05"], dsm_resolution=0.05, depth=8, samples=1, maxVertexCount=100000, 
+                   available_cores=None, method='gridded', smooth_dsm=True, use_dtm=False):
     # Create DSM from point cloud
 
     # Create temporary directory
@@ -23,11 +24,12 @@ def create_25dmesh(inPointCloud, outMesh, radius_steps=["0.05"], dsm_resolution=
     log.ODM_INFO('Creating DSM for 2.5D mesh')
 
     mesh_dem = 'mesh_dtm' if use_dtm else 'mesh_dsm'
+    output_type = 'max' if use_dtm else 'idw'
 
     commands.create_dem(
             inPointCloud,
             mesh_dem,
-            output_type='idw',
+            output_type=output_type,
             radiuses=radius_steps,
             power=1,
             gapfill=True,
