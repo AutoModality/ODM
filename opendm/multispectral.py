@@ -330,18 +330,15 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
     for band in multi_camera:
         if band['name'] != primary_band_name:
             matrices_samples = []
-            matrices_samples_counter = 0
             use_local_warp_matrix = use_local_homography # and band['name'] == 'LWIR'
             max_samples = max_samples if not use_local_warp_matrix and max_samples > 0 and max_samples < len(band['photos']) else len(band['photos'])
 
             def parallel_compute_homography(photo):
-                matrices_samples_counter += 1
-
                 filename = photo.filename
                 try:
                     # Caculate the best warp matrix using a few samples in favor of performance
-                    if not use_local_warp_matrix and matrices_samples_counter > max_samples:
-                        # log.ODM_INFO("Got enough samples for %s (%s)" % (band['name'], matrices_samples_counter))
+                    if not use_local_warp_matrix and len(matrices_samples) >= max_samples:
+                        # log.ODM_INFO("Got enough samples for %s (%s)" % (band['name'], max_samples))
                         return
 
                     # Find good matrix candidates for alignment
