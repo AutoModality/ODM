@@ -89,11 +89,12 @@ def filter(input_point_cloud, output_point_cloud, output_stats, standard_deviati
         log.ODM_INFO("Sampling points around a %sm radius" % sample_radius)
         args.append('--radius %s' % sample_radius)
 
-    meank = 16
-    log.ODM_INFO("Filtering {} (statistical, meanK {}, standard deviation {})".format(input_point_cloud, meank, standard_deviation))
-    args.append('--meank %s' % meank)
-    args.append('--std %s' % standard_deviation)
-    args.append('--stats "%s"' % output_stats)
+    if standard_deviation > 0:
+        meank = 16
+        log.ODM_INFO("Filtering {} (statistical, meanK {}, standard deviation {})".format(input_point_cloud, meank, standard_deviation))
+        args.append('--meank %s' % meank)
+        args.append('--std %s' % standard_deviation)
+        args.append('--stats "%s"' % output_stats)
     
     if boundary is not None:
         log.ODM_INFO("Boundary {}".format(boundary))

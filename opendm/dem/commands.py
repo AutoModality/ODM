@@ -66,7 +66,7 @@ def rectify(lasFile, reclassify_threshold=5, min_area=750, min_points=500):
 
 error = None
 
-def create_dem(input_point_cloud, dem_type, output_type='max', radiuses=['0.56'], gapfill=True,
+def create_dem(input_point_cloud, dem_type, output_type='max', radiuses=['0.56'], power=1, gapfill=True,
                 outdir='', resolution=0.1, max_workers=1, max_tile_size=4096,
                 decimation=None, keep_unfilled_copy=False,
                 apply_smoothing=True):
@@ -156,9 +156,9 @@ def create_dem(input_point_cloud, dem_type, output_type='max', radiuses=['0.56']
     def process_tile(q):
         log.ODM_INFO("Generating %s (%s, radius: %s, resolution: %s)" % (q['filename'], output_type, q['radius'], resolution))
         
-        d = pdal.json_gdal_base(q['filename'], output_type, q['radius'], resolution, q['bounds'])
+        d = pdal.json_gdal_base(q['filename'], output_type, q['radius'], power, resolution, q['bounds'])
 
-        if dem_type == 'dtm':
+        if dem_type == 'dtm' or dem_type == 'mesh_dtm':
             d = pdal.json_add_classification_filter(d, 2)
 
         if decimation is not None:

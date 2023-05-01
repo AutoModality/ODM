@@ -9,7 +9,8 @@ from opendm import point_cloud
 from scipy import signal
 import numpy as np
 
-def create_25dmesh(inPointCloud, outMesh, radius_steps=["0.05"], dsm_resolution=0.05, depth=8, samples=1, maxVertexCount=100000, available_cores=None, method='gridded', smooth_dsm=True):
+def create_25dmesh(inPointCloud, outMesh, radius_steps=["0.05"], dsm_resolution=0.05, depth=8, samples=1, maxVertexCount=100000, 
+                   available_cores=None, method='gridded', smooth_dsm=True, use_dtm=False):
     # Create DSM from point cloud
 
     # Create temporary directory
@@ -22,11 +23,15 @@ def create_25dmesh(inPointCloud, outMesh, radius_steps=["0.05"], dsm_resolution=
 
     log.ODM_INFO('Creating DSM for 2.5D mesh')
 
+    mesh_dem = 'mesh_dtm' if use_dtm else 'mesh_dsm'
+    output_type = 'max' if use_dtm else 'idw'
+
     commands.create_dem(
             inPointCloud,
-            'mesh_dsm',
-            output_type='idw',
+            mesh_dem,
+            output_type=output_type,
             radiuses=radius_steps,
+            power=1,
             gapfill=True,
             outdir=tmp_directory,
             resolution=dsm_resolution,
@@ -35,9 +40,9 @@ def create_25dmesh(inPointCloud, outMesh, radius_steps=["0.05"], dsm_resolution=
         )
 
     if method == 'gridded':
-        mesh = dem_to_mesh_gridded(os.path.join(tmp_directory, 'mesh_dsm.tif'), outMesh, maxVertexCount, maxConcurrency=max(1, available_cores))
+        mesh = dem_to_mesh_gridded(os.path.join(tmp_directory, mesh_dem + '.tif'), outMesh, maxVertexCount, maxConcurrency=max(1, available_cores))
     elif method == 'poisson':
-        dsm_points = dem_to_points(os.path.join(tmp_directory, 'mesh_dsm.tif'), os.path.join(tmp_directory, 'dsm_points.ply'))
+        dsm_points = dem_to_points(os.path.join(tmp_directory, mesh_dem + '.tif'), os.path.join(tmp_directory, 'dsm_points.ply'))
         mesh = screened_poisson_reconstruction(dsm_points, outMesh, depth=depth, 
                                     samples=samples, 
                                     maxVertexCount=maxVertexCount, 

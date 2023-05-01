@@ -36,6 +36,7 @@ class ODMMvsTexStage(types.ODM_Stage):
                     'model': tree.odm_mesh,
                     'nadir': False,
                     'primary': primary,
+                    'band': band,
                     'nvm_file': nvm_file,
                     'labeling_file': os.path.join(tree.odm_texturing, "odm_textured_model_geo_labeling.vec") if subdir else None
                 }]
@@ -46,6 +47,7 @@ class ODMMvsTexStage(types.ODM_Stage):
                     'model': tree.odm_25dmesh,
                     'nadir': True,
                     'primary': primary,
+                    'band': band,
                     'nvm_file': nvm_file,
                     'labeling_file': os.path.join(tree.odm_25dtexturing, "odm_textured_model_geo_labeling.vec") if subdir else None
                 }]
@@ -80,6 +82,8 @@ class ODMMvsTexStage(types.ODM_Stage):
                     os.unlink(unaligned_obj)
 
                 # Format arguments to fit Mvs-Texturing app
+                dataTerm = args.texturing_data_term
+                outlierRemovalType = args.texturing_outlier_removal_type
                 skipGlobalSeamLeveling = ""
                 skipLocalSeamLeveling = ""
                 keepUnseenFaces = ""
@@ -94,13 +98,21 @@ class ODMMvsTexStage(types.ODM_Stage):
                 if (r['nadir']):
                     nadir = '--nadir_mode'
 
+                # thermal band
+                if (r['band'] == 'lwir'):
+                    dataTerm = "gmi"
+                    outlierRemovalType = "none"
+                    skipGlobalSeamLeveling = ""
+                    skipLocalSeamLeveling = ""
+                    keepUnseenFaces = ""
+
                 # mvstex definitions
                 kwargs = {
                     'bin': context.mvstex_path,
                     'out_dir': os.path.join(r['out_dir'], "odm_textured_model_geo"),
                     'model': r['model'],
-                    'dataTerm': args.texturing_data_term,
-                    'outlierRemovalType': args.texturing_outlier_removal_type,
+                    'dataTerm': dataTerm,
+                    'outlierRemovalType': outlierRemovalType,
                     'skipGlobalSeamLeveling': skipGlobalSeamLeveling,
                     'skipLocalSeamLeveling': skipLocalSeamLeveling,
                     'keepUnseenFaces': keepUnseenFaces,
