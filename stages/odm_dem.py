@@ -102,7 +102,7 @@ class ODMDEMStage(types.ODM_Stage):
                             product,
                             output_type=args.dtm_interpolation if product == 'dtm' else args.dsm_interpolation,
                             radiuses=list(map(str, radius_steps)),
-                            power=2,
+                            power=1,
                             gapfill=args.dem_gapfill_steps > 0,
                             outdir=odm_dem_root,
                             resolution=resolution / 100.0,
