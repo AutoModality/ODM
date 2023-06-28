@@ -81,6 +81,7 @@ def compute_alignment_matrix(input_laz, align_file, stats_dir):
             align_file = repr_func(align_file, input_crs)
             to_delete.append(align_file)
 
+        log.ODM_INFO("Running CODEM %s" % codem.__version__)
         conf = dataclasses.asdict(codem.CodemRunConfig(align_file, input_laz, OUTPUT_DIR=stats_dir))
         fnd_obj, aoi_obj = codem.preprocess(conf)
         fnd_obj.prep()
