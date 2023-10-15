@@ -495,6 +495,13 @@ def config(argv=None, parser=None):
                         choices=['none', 'gauss_clamping', 'gauss_damping'],
                         help=('Type of photometric outlier removal method. Can be one of: %(choices)s. Default: %(default)s'))
 
+    parser.add_argument('--thermal-texturing-outlier-removal-type',
+                        metavar='<string>',
+                        action=StoreValue,
+                        default='none',
+                        choices=['none', 'gauss_clamping', 'gauss_damping'],
+                        help=('Type of thermal photometric outlier removal method. Can be one of: %(choices)s. Default: %(default)s'))
+
     parser.add_argument('--texturing-skip-global-seam-leveling',
                         action=StoreTrue,
                         nargs=0,

@@ -101,7 +101,7 @@ class ODMMvsTexStage(types.ODM_Stage):
                 # thermal band
                 if (r['band'] == 'lwir'):
                     dataTerm = "gmi"
-                    outlierRemovalType = "none"
+                    outlierRemovalType = args.thermal_texturing_outlier_removal_type
                     skipGlobalSeamLeveling = ""
                     skipLocalSeamLeveling = ""
                     keepUnseenFaces = ""
