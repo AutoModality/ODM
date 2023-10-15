@@ -81,6 +81,7 @@ def compute_alignment_matrix(input_laz, align_file, stats_dir):
             align_file = repr_func(align_file, input_crs)
             to_delete.append(align_file)
 
+        log.ODM_INFO("Running CODEM %s" % codem.__version__)
         conf = dataclasses.asdict(codem.CodemRunConfig(align_file, input_laz, OUTPUT_DIR=stats_dir))
         fnd_obj, aoi_obj = codem.preprocess(conf)
         fnd_obj.prep()
@@ -102,6 +103,10 @@ def compute_alignment_matrix(input_laz, align_file, stats_dir):
         )
 
         reg = app_reg.get_registration_transformation()
+        if isinstance(reg, dict):
+            reg_matrix = reg['matrix']
+        else:
+            reg_matrix = reg[0]
         
         # Write JSON to stats folder
         with open(os.path.join(stats_dir, "registration.json"), 'w') as f:
@@ -113,7 +118,7 @@ def compute_alignment_matrix(input_laz, align_file, stats_dir):
                 'fine': icp_reg.registration_parameters,
             }, indent=4))
 
-        matrix = np.fromstring(reg['matrix'], dtype=float, sep=' ').reshape((4, 4))
+        matrix = np.fromstring(reg_matrix, dtype=float, sep=' ').reshape((4, 4))
         return matrix
     finally:
         for f in to_delete:
