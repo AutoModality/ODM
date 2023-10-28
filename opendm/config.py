@@ -505,7 +505,7 @@ def config(argv=None, parser=None):
     parser.add_argument('--thermal-texturing-outlier-removal-type',
                         metavar='<string>',
                         action=StoreValue,
-                        default='none',
+                        default='gauss_clamping',
                         choices=['none', 'gauss_clamping', 'gauss_damping'],
                         help=('Type of thermal photometric outlier removal method. Can be one of: %(choices)s. Default: %(default)s'))
 
