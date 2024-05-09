@@ -10,6 +10,9 @@ from six import string_types
 from datetime import datetime, timedelta, timezone
 import pytz
 
+import base64
+import struct
+
 from opendm import io
 from opendm import log
 from opendm import system
@@ -101,6 +104,7 @@ class ODM_Photo:
         self.camera_make = ''
         self.camera_model = ''
         self.orientation = 1
+        self.sensor_model = None
 
         # Geo tags
         self.latitude = None
@@ -130,10 +134,20 @@ class ODM_Photo:
         self.principal_point = None
         self.focal_plane_resolution_x = None
         self.focal_plane_resolution_y = None
+        self.utc_time = None
+
+        # DLS
+        self.sun_sensor = None
+        self.dls_yaw = None
+        self.dls_pitch = None
+        self.dls_roll = None
+
+        # Irradiance calibration        
         self.spectral_irradiance = None
         self.horizontal_irradiance = None
         self.irradiance_scale_to_si = None
-        self.utc_time = None
+        self.irradiance_list = None
+        self.irradiance_calibration = None
 
         # OPK angles
         self.yaw = None
@@ -142,12 +156,6 @@ class ODM_Photo:
         self.omega = None
         self.phi = None
         self.kappa = None
-
-        # DLS
-        self.sun_sensor = None
-        self.dls_yaw = None
-        self.dls_pitch = None
-        self.dls_roll = None
 
         # Aircraft speed
         self.speed_x = None
@@ -325,6 +333,10 @@ class ODM_Photo:
                     if band_name is not None:
                         self.band_name = band_name.replace(" ", "")
 
+                    self.set_attr_from_xmp_tag('sensor_model', xtags, [
+                        'Camera:SensorModel',   # Parrot Sequoia
+                    ])
+
                     self.set_attr_from_xmp_tag('band_index', xtags, [
                         'DLS:SensorId', # Micasense RedEdge
                         '@Camera:RigCameraIndex', # Parrot Sequoia, Sentera 21244-00_3.2MP-GS-0001
@@ -373,6 +385,14 @@ class ODM_Photo:
                     self.set_attr_from_xmp_tag('sun_sensor', xtags, [
                         'Camera:SunSensor',
                     ], float)
+
+                    self.set_attr_from_xmp_tag('irradiance_calibration', xtags, [
+                        '@Camera:IrradianceCalibrationMeasurement',   # Parrot Sequoia
+                    ])
+
+                    self.set_attr_from_xmp_tag('irradiance_list', xtags, [
+                        'Camera:IrradianceList',   # Parrot Sequoia
+                    ])
 
                     self.set_attr_from_xmp_tag('spectral_irradiance', xtags, [
                         'Camera:SpectralIrradiance',
@@ -685,6 +705,16 @@ class ODM_Photo:
         return self.width, self.height
 
     def get_radiometric_calibration(self):
+        if self.camera_make == "Parrot" and self.camera_model == "Sequoia":
+            # see https://github.com/OpenDroneMap/ODM/commit/70b2913ec0377e72591288af0500de7c153b3656
+            # the first parameter of the sensor model will be used for calculation
+            if self.sensor_model is None:       # Exif SensorModel is missing
+                return [None, None, None]
+            else:
+                sensor_pm = np.array([float(v) for v in self.sensor_model.split(",")])
+                sfac = self.fnumber * self.fnumber / (sensor_pm[0] * 100.0 / 65536.0)
+                return [sfac, None, None]
+
         if isinstance(self.radiometric_calibration, str):
             parts = self.radiometric_calibration.split(" ")
             if len(parts) == 3:
@@ -693,6 +723,15 @@ class ODM_Photo:
         return [None, None, None]
     
     def get_dark_level(self):
+        if self.camera_make == "Parrot" and self.camera_model == "Sequoia":
+            # see https://github.com/OpenDroneMap/ODM/commit/70b2913ec0377e72591288af0500de7c153b3656
+            # the second parameter of the sensor model will be used for calculation
+            if self.sensor_model is None:       # Exif SensorModel is missing
+                return None
+            else:
+                sensor_pm = np.array([float(v) for v in self.sensor_model.split(",")])
+                return sensor_pm[1]
+
         if self.black_level:
             levels = np.array([float(v) for v in self.black_level.split(" ")])
             return levels.mean()
@@ -761,6 +800,46 @@ class ODM_Photo:
             return None
     
     def get_sun_sensor(self):
+        if self.camera_make == "Parrot" and self.camera_model == "Sequoia":
+            # See https://github.com/OpenDroneMap/ODM/commit/70b2913ec0377e72591288af0500de7c153b3656
+            if self.irradiance_calibration is None:      # Exif IrradianceCalibrationMeasurement is missing
+                return None
+            else:
+                irrad_cal_pm = np.array([float(v) for v in self.irrad_cal.irradiance_calibration(",")])
+                #    GainIndex          IntegTime              CH0              CH1
+                # irrad_cal_pm[0]=0  irrad_cal_pm[1]  irrad_cal_pm[2]  irrad_cal_pm[3]
+                # irrad_cal_pm[4]=1  irrad_cal_pm[5]  irrad_cal_pm[6]  irrad_cal_pm[7]
+                # irrad_cal_pm[8]=2  irrad_cal_pm[9]  irrad_cal_pm[10] irrad_cal_pm[11]
+                # irrad_cal_pm[12]=3 irrad_cal_pm[13] irrad_cal_pm[14] irrad_cal_pm[15]
+                irrad_cal_0 = irrad_cal_pm[2] * (600.0 / irrad_cal_pm[1])
+                irrad_cal_1 = irrad_cal_pm[6] * (600.0 / irrad_cal_pm[5])
+                irrad_cal_2 = irrad_cal_pm[10] * (600.0 / irrad_cal_pm[9])
+                irrad_cal_3 = irrad_cal_pm[14] * (600.0 / irrad_cal_pm[13])
+                irrad_cal_fac = [irrad_cal_0, irrad_cal_1, irrad_cal_2, irrad_cal_3]
+
+            irrad_binary = base64.b64decode(self.irradiance_list)
+
+            irrad_last3 = None
+            irrad_last2 = None
+            irrad_last1 = None
+
+            for irrad_pm in struct.iter_unpack("QHHHHfff", irrad_binary):
+                #                               Q=uint64 H=uint16 f=float32
+                # irrad_pm[0]=TimeStamp     irrad_pm[1]=CH0 count   irrad_pm[2]=CH1 count
+                # irrad_pm[3]=GainIndex     irrad_pm[4]=IntegTime
+                # irrad_pm[5]=Yaw           irrad_pm[6]=Pitch       irrad_pm[7]=Roll
+                #
+                irrad_fac = irrad_cal_fac[1]/irrad_cal_fac[irrad_pm[3]] * 600.0/irrad_pm[4]
+                irrad_last3 = irrad_last2
+                irrad_last2 = irrad_last1
+                irrad_last1 = irrad_pm[1] * irrad_fac
+
+            if irrad_last3 is None:     # No. of records less than 3
+                return None
+            else:
+                irrad_avg = (irrad_last1 + irrad_last2 + irrad_last3) / 3.0
+                return irrad_avg / irrad_cal_1
+
         if self.sun_sensor is not None:
             # TODO: Presence of XMP:SunSensorExposureTime
             # and XMP:SunSensorSensitivity might
