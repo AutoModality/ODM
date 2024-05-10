@@ -1,6 +1,8 @@
 import logging
 import re
 import os
+import base64
+import struct
 import cv2
 import math
 
@@ -9,9 +11,6 @@ import numpy as np
 from six import string_types
 from datetime import datetime, timedelta, timezone
 import pytz
-
-import base64
-import struct
 
 from opendm import io
 from opendm import log
