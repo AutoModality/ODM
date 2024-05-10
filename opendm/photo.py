@@ -804,7 +804,7 @@ class ODM_Photo:
             if self.irradiance_calibration is None:      # Exif IrradianceCalibrationMeasurement is missing
                 return None
             else:
-                irrad_cal_pm = np.array([float(v) for v in self.irrad_cal.irradiance_calibration(",")])
+                irrad_cal_pm = np.array([float(v) for v in self.irradiance_calibration.split(",")])
                 #    GainIndex          IntegTime              CH0              CH1
                 # irrad_cal_pm[0]=0  irrad_cal_pm[1]  irrad_cal_pm[2]  irrad_cal_pm[3]
                 # irrad_cal_pm[4]=1  irrad_cal_pm[5]  irrad_cal_pm[6]  irrad_cal_pm[7]
