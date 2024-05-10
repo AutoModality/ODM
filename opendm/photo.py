@@ -35,7 +35,7 @@ def find_largest_photo_dims(photos):
         if mp > max_mp:
             max_mp = mp
             max_dims = (p.width, p.height)
-        
+
     return max_dims
 
 def find_largest_photo_dim(photos):
@@ -44,7 +44,7 @@ def find_largest_photo_dim(photos):
         if p.width is None:
             continue
         max_dim = max(max_dim, max(p.width, p.height))
-        
+
     return max_dim
 
 def find_largest_photo(photos):
@@ -96,7 +96,7 @@ class ODM_Photo:
     def __init__(self, path_file):
         self.filename = os.path.basename(path_file)
         self.mask = None
-        
+
         # Standard tags (virtually all photos have these)
         self.width = None
         self.height = None
@@ -141,7 +141,7 @@ class ODM_Photo:
         self.dls_pitch = None
         self.dls_roll = None
 
-        # Irradiance calibration        
+        # Irradiance calibration
         self.spectral_irradiance = None
         self.horizontal_irradiance = None
         self.irradiance_scale_to_si = None
@@ -182,7 +182,7 @@ class ODM_Photo:
 
     def __str__(self):
         return '{} | camera: {} {} | dimensions: {} x {} | lat: {} | lon: {} | alt: {} | band: {} ({})'.format(
-                            self.filename, self.camera_make, self.camera_model, self.width, self.height, 
+                            self.filename, self.camera_make, self.camera_model, self.width, self.height,
                             self.latitude, self.longitude, self.altitude, self.band_name, self.band_index)
 
     def set_mask(self, mask):
@@ -193,7 +193,7 @@ class ODM_Photo:
         self.longitude = geo_entry.x
         self.altitude = geo_entry.z
         if geo_entry.yaw is not None and geo_entry.pitch is not None and geo_entry.roll is not None:
-            self.yaw = geo_entry.yaw 
+            self.yaw = geo_entry.yaw
             self.pitch = geo_entry.pitch
             self.roll = geo_entry.roll
             self.dls_yaw = geo_entry.yaw
@@ -263,14 +263,14 @@ class ODM_Photo:
 
                 if 'EXIF FNumber' in tags:
                     self.fnumber = self.float_value(tags['EXIF FNumber'])
-                
+
                 if 'EXIF ISOSpeed' in tags:
                     self.iso_speed = self.int_value(tags['EXIF ISOSpeed'])
                 elif 'EXIF PhotographicSensitivity' in tags:
                     self.iso_speed = self.int_value(tags['EXIF PhotographicSensitivity'])
                 elif 'EXIF ISOSpeedRatings' in tags:
                     self.iso_speed = self.int_value(tags['EXIF ISOSpeedRatings'])
-                
+
                 if 'Image BitsPerSample' in tags:
                     self.bits_per_sample = self.int_value(tags['Image BitsPerSample'])
 
@@ -291,7 +291,7 @@ class ODM_Photo:
                     timezone = pytz.timezone('UTC')
                     epoch = timezone.localize(datetime.utcfromtimestamp(0))
                     self.utc_time = (timezone.localize(utc_time) - epoch).total_seconds() * 1000.0
-                
+
                 if 'MakerNote SpeedX' in tags and \
                     'MakerNote SpeedY' in tags and \
                     'MakerNote SpeedZ' in tags:
@@ -312,7 +312,7 @@ class ODM_Photo:
 
                 if 'EXIF FocalLength' in tags:
                    self.focal_length = self.float_value(tags['EXIF FocalLength'])
-                
+
             except Exception as e:
                 log.ODM_WARNING("Cannot read extended EXIF tags for %s: %s" % (self.filename, str(e)))
 
@@ -371,7 +371,7 @@ class ODM_Photo:
                     self.set_attr_from_xmp_tag('focal_length', xtags, [
                         'Camera:PerspectiveFocalLength' # Micasense Altum and RedEdge-MX
                     ], float)
-                    
+
                     self.set_attr_from_xmp_tag('horizontal_irradiance', xtags, [
                         'Camera:HorizontalIrradiance',
                         'DLS:HorizontalIrradiance' # Micasense DLS2
@@ -440,7 +440,7 @@ class ODM_Photo:
                         y = float(self.get_xmp_tag(xtags, '@drone-dji:RtkStdLon'))
                         x = float(self.get_xmp_tag(xtags, '@drone-dji:RtkStdLat'))
                         self.gps_xy_stddev = max(x, y)
-                    
+
                         if '@drone-dji:RtkStdHgt' in xtags:
                             self.gps_z_stddev = float(self.get_xmp_tag(xtags, '@drone-dji:RtkStdHgt'))
                     else:
@@ -452,7 +452,7 @@ class ODM_Photo:
                             '@Camera:GPSZAccuracy',
                             'GPSZAccuracy'
                         ], float)
-                    
+
                     # DJI Speed tags
                     if '@drone-dji:FlightXSpeed' in xtags and \
                        '@drone-dji:FlightYSpeed' in xtags and \
@@ -477,7 +477,7 @@ class ODM_Photo:
                         self.set_attr_from_xmp_tag('dls_yaw', xtags, ['DLS:Yaw'], float)
                         self.set_attr_from_xmp_tag('dls_pitch', xtags, ['DLS:Pitch'], float)
                         self.set_attr_from_xmp_tag('dls_roll', xtags, ['DLS:Roll'], float)
-                
+
                     camera_projection = self.get_xmp_tag(xtags, ['@Camera:ModelType', 'Camera:ModelType'])
                     if camera_projection is not None:
                         camera_projection = camera_projection.lower()
@@ -499,7 +499,7 @@ class ODM_Photo:
                     if self.has_ypr():
                         if self.camera_make.lower() in ['dji', 'hasselblad']:
                             self.pitch = 90 + self.pitch
-                    
+
                         if self.camera_make.lower() == 'sensefly':
                             self.roll *= -1
 
@@ -513,7 +513,7 @@ class ODM_Photo:
                 # self.set_attr_from_xmp_tag('bandwidth', xtags, [
                 #     'Camera:WavelengthFWHM'
                 # ], float)
-        
+
         # Special case band handling for AeroVironment Quantix images
         # for some reason, they don't store band information in EXIFs
         if self.camera_make.lower() == 'aerovironment' and \
@@ -537,7 +537,7 @@ class ODM_Photo:
 
     def compute_focal(self, tags, xtags):
         try:
-            _focal_ratio, _focal_length = self.extract_focal(self.camera_make, self.camera_model, tags, xtags)            
+            _focal_ratio, _focal_length = self.extract_focal(self.camera_make, self.camera_model, tags, xtags)
             self.focal_ratio = _focal_ratio
             if self.focal_length is None:
                 self.focal_length = _focal_length
@@ -548,7 +548,7 @@ class ODM_Photo:
         if make != "unknown":
             # remove duplicate 'make' information in 'model'
             model = model.replace(make, "")
-        
+
         sensor_string = (make.strip() + " " + model.strip()).strip().lower()
 
         sensor_width = None
@@ -559,7 +559,7 @@ class ODM_Photo:
                 pixels_per_unit = self.float_value(tags["EXIF FocalPlaneXResolution"])
                 if pixels_per_unit <= 0 and "EXIF FocalPlaneYResolution" in tags:
                     pixels_per_unit = self.float_value(tags["EXIF FocalPlaneYResolution"])
-                
+
                 if pixels_per_unit > 0 and self.width is not None:
                     units_per_pixel = 1 / pixels_per_unit
                     sensor_width = self.width * units_per_pixel * mm_per_unit
@@ -598,11 +598,11 @@ class ODM_Photo:
                 if (cast == float or cast == int) and "/" in v:
                     v = self.try_parse_fraction(v)
                 setattr(self, attr, cast(v))
-    
+
     def get_xmp_tag(self, xmp_tags, tags):
         if isinstance(tags, str):
             tags = [tags]
-        
+
         for tag in tags:
             if tag in xmp_tags:
                 t = xmp_tags[tag]
@@ -618,7 +618,7 @@ class ODM_Photo:
                 elif isinstance(t, int) or isinstance(t, float):
                     return t
 
-    
+
     # From https://github.com/mapillary/OpenSfM/blob/master/opensfm/exif.py
     def get_xmp(self, file):
         img_bytes = file.read()
@@ -647,7 +647,7 @@ class ODM_Photo:
     def dms_to_decimal(self, dms, sign):
         """Converts dms coords to decimal degrees"""
         degrees, minutes, seconds = self.float_values(dms)
-        
+
         if degrees is not None and minutes is not None and seconds is not None:
             return (-1 if sign.values[0] in 'SWsw' else 1) * (
                 degrees +
@@ -670,7 +670,7 @@ class ODM_Photo:
             return result
         else:
             return [float(tag.values.num) / float(tag.values.den) if tag.values.den != 0 else None]
-    
+
     def float_value(self, tag):
         v = self.float_values(tag)
         if len(v) > 0:
@@ -698,21 +698,14 @@ class ODM_Photo:
                 return num / den if den != 0 else val
             except ValueError:
                 pass
-        return val 
+        return val
 
     def get_size(self):
         return self.width, self.height
 
     def get_radiometric_calibration(self):
         if self.camera_make == "Parrot" and self.camera_model == "Sequoia":
-            # see https://github.com/OpenDroneMap/ODM/commit/70b2913ec0377e72591288af0500de7c153b3656
-            # the first parameter of the sensor model will be used for calculation
-            if self.sensor_model is None:       # Exif SensorModel is missing
-                return [None, None, None]
-            else:
-                sensor_pm = np.array([float(v) for v in self.sensor_model.split(",")])
-                sfac = self.fnumber * self.fnumber / (sensor_pm[0] * 100.0 / 65536.0)
-                return [sfac, None, None]
+            return self.get_radiometric_calibration_sequoia()
 
         if isinstance(self.radiometric_calibration, str):
             parts = self.radiometric_calibration.split(" ")
@@ -720,16 +713,10 @@ class ODM_Photo:
                 return list(map(float, parts))
 
         return [None, None, None]
-    
+
     def get_dark_level(self):
         if self.camera_make == "Parrot" and self.camera_model == "Sequoia":
-            # see https://github.com/OpenDroneMap/ODM/commit/70b2913ec0377e72591288af0500de7c153b3656
-            # the second parameter of the sensor model will be used for calculation
-            if self.sensor_model is None:       # Exif SensorModel is missing
-                return None
-            else:
-                sensor_pm = np.array([float(v) for v in self.sensor_model.split(",")])
-                return sensor_pm[1]
+            return self.get_dark_level_sequoia()
 
         if self.black_level:
             levels = np.array([float(v) for v in self.black_level.split(" ")])
@@ -797,52 +784,15 @@ class ODM_Photo:
             return self.spectral_irradiance * scale
         else:
             return None
-    
+
     def get_sun_sensor(self):
         if self.camera_make == "Parrot" and self.camera_model == "Sequoia":
-            # See https://github.com/OpenDroneMap/ODM/commit/70b2913ec0377e72591288af0500de7c153b3656
-            if self.irradiance_calibration is None:      # Exif IrradianceCalibrationMeasurement is missing
-                return None
-            else:
-                irrad_cal_pm = np.array([float(v) for v in self.irradiance_calibration.split(",")])
-                #    GainIndex          IntegTime              CH0              CH1
-                # irrad_cal_pm[0]=0  irrad_cal_pm[1]  irrad_cal_pm[2]  irrad_cal_pm[3]
-                # irrad_cal_pm[4]=1  irrad_cal_pm[5]  irrad_cal_pm[6]  irrad_cal_pm[7]
-                # irrad_cal_pm[8]=2  irrad_cal_pm[9]  irrad_cal_pm[10] irrad_cal_pm[11]
-                # irrad_cal_pm[12]=3 irrad_cal_pm[13] irrad_cal_pm[14] irrad_cal_pm[15]
-                irrad_cal_0 = irrad_cal_pm[2] * (600.0 / irrad_cal_pm[1])
-                irrad_cal_1 = irrad_cal_pm[6] * (600.0 / irrad_cal_pm[5])
-                irrad_cal_2 = irrad_cal_pm[10] * (600.0 / irrad_cal_pm[9])
-                irrad_cal_3 = irrad_cal_pm[14] * (600.0 / irrad_cal_pm[13])
-                irrad_cal_fac = [irrad_cal_0, irrad_cal_1, irrad_cal_2, irrad_cal_3]
-
-            irrad_binary = base64.b64decode(self.irradiance_list)
-
-            irrad_last3 = None
-            irrad_last2 = None
-            irrad_last1 = None
-
-            for irrad_pm in struct.iter_unpack("QHHHHfff", irrad_binary):
-                #                               Q=uint64 H=uint16 f=float32
-                # irrad_pm[0]=TimeStamp     irrad_pm[1]=CH0 count   irrad_pm[2]=CH1 count
-                # irrad_pm[3]=GainIndex     irrad_pm[4]=IntegTime
-                # irrad_pm[5]=Yaw           irrad_pm[6]=Pitch       irrad_pm[7]=Roll
-                #
-                irrad_fac = irrad_cal_fac[1]/irrad_cal_fac[irrad_pm[3]] * 600.0/irrad_pm[4]
-                irrad_last3 = irrad_last2
-                irrad_last2 = irrad_last1
-                irrad_last1 = irrad_pm[1] * irrad_fac
-
-            if irrad_last3 is None:     # No. of records less than 3
-                return None
-            else:
-                irrad_avg = (irrad_last1 + irrad_last2 + irrad_last3) / 3.0
-                return irrad_avg / irrad_cal_1
+            return self.get_sun_sensor_sequoia()
 
         if self.sun_sensor is not None:
             # TODO: Presence of XMP:SunSensorExposureTime
             # and XMP:SunSensorSensitivity might
-            # require additional logic. If these two tags are present, 
+            # require additional logic. If these two tags are present,
             # then sun_sensor is not in physical units?
             return self.sun_sensor / 65535.0 # normalize uint16 (assumed)
         elif self.spectral_irradiance is not None:
@@ -855,14 +805,14 @@ class ODM_Photo:
         if self.irradiance_scale_to_si is not None:
             scale = self.irradiance_scale_to_si
         elif self.camera_make == 'MicaSense':
-            # In the case of Micasense DLS2 missing the scale metadata, 
+            # In the case of Micasense DLS2 missing the scale metadata,
             # multiply the SpectralIrradiance and HorizontalIrradiance by 0.01 to get to W/m2/nm.
             # See https://github.com/micasense/imageprocessing/issues/47
             scale = 0.01
         elif self.camera_make == 'DJI':
             # Phantom 4 Multispectral saves irridiance in @drone-dji:Irradiance and Camera:Irradiance
             scale = 1.0 / math.pi
-                    
+
         return scale
 
     def get_dls_pose(self):
@@ -921,7 +871,7 @@ class ODM_Photo:
         if(self.camera_make == "DJI" and self.camera_model == "ZH20T" and self.width == 640 and self.height == 512):
             return True
         return self.band_name.upper() in ["LWIR"] # TODO: more?
-    
+
     def is_rgb(self):
         return self.band_name.upper() in ["RGB", "REDGREENBLUE"]
 
@@ -942,7 +892,7 @@ class ODM_Photo:
         capture_time = 0.0
         if self.utc_time is not None:
             capture_time = self.utc_time / 1000.0
-        
+
         gps = {}
         has_gps = self.latitude is not None and self.longitude is not None
         if has_gps:
@@ -956,7 +906,7 @@ class ODM_Photo:
             dop = self.get_gps_dop()
             if dop is None:
                 dop = 10.0 # Default
-            
+
             gps['dop'] = dop
 
         d = {
@@ -978,26 +928,26 @@ class ODM_Photo:
                 'phi': self.phi,
                 'kappa': self.kappa
             }
-        
+
         # Speed is not useful without GPS
         if self.has_speed() and has_gps:
             d['speed'] = [self.speed_y, self.speed_x, self.speed_z]
-        
+
         if rolling_shutter:
             d['rolling_shutter'] = get_rolling_shutter_readout(self, rolling_shutter_readout)
-        
+
         return d
 
     def has_ypr(self):
         return self.yaw is not None and \
             self.pitch is not None and \
             self.roll is not None
-    
+
     def has_opk(self):
         return self.omega is not None and \
             self.phi is not None and \
             self.kappa is not None
-    
+
     def has_speed(self):
         return self.speed_x is not None and \
                 self.speed_y is not None and \
@@ -1006,14 +956,14 @@ class ODM_Photo:
     def has_geo(self):
         return self.latitude is not None and \
             self.longitude is not None
-    
+
     def compute_opk(self):
         if self.has_ypr() and self.has_geo():
             y, p, r = math.radians(self.yaw), math.radians(self.pitch), math.radians(self.roll)
 
-            # Ref: New Calibration and Computing Method for Direct 
-            # Georeferencing of Image and Scanner Data Using the 
-            # Position and Angular Data of an Hybrid Inertial Navigation System 
+            # Ref: New Calibration and Computing Method for Direct
+            # Georeferencing of Image and Scanner Data Using the
+            # Position and Angular Data of an Hybrid Inertial Navigation System
             # by Manfred Bäumker
 
             # YPR rotation matrix
@@ -1032,19 +982,19 @@ class ODM_Photo:
             cbb = np.array([[0, 1, 0],
                             [1, 0, 0],
                             [0, 0, -1]])
-            
+
             delta = 1e-7
-            
+
             alt = self.altitude if self.altitude is not None else 0.0
             p1 = np.array(ecef_from_lla(self.latitude + delta, self.longitude, alt))
             p2 = np.array(ecef_from_lla(self.latitude - delta, self.longitude, alt))
             xnp = p1 - p2
             m = np.linalg.norm(xnp)
-            
+
             if m == 0:
                 log.ODM_WARNING("Cannot compute OPK angles, divider = 0")
                 return
-            
+
             # Unit vector pointing north
             xnp /= m
 
@@ -1097,7 +1047,7 @@ class ODM_Photo:
         cam_mat[1, 2] = center_y
 
         return cam_mat
-    
+
     def cv2_distortion_coeff(self):
         return np.array(self.get_distortion_parameters())[[0, 1, 3, 4, 2]]
 
@@ -1124,7 +1074,7 @@ class ODM_Photo:
                             0,  0,  1]).reshape(3,3)
             R = Rx*Ry*Rz
             return R
-                    
+
         if R is None:
             R = rotations_degrees_to_rotation_matrix(self.get_rig_relatives())
         if T is None:
@@ -1134,7 +1084,7 @@ class ODM_Photo:
         A[0:3,0:3]=np.dot(R_ref.T,R)
         A[0:3,3]=T
         A[3,3]=1.
-        
+
         C, _ = cv2.getOptimalNewCameraMatrix(self.cv2_camera_matrix(),
                                             self.cv2_distortion_coeff() if undistorted else None,
                                             self.get_size(), alpha=1)
@@ -1149,7 +1099,7 @@ class ODM_Photo:
         CCr[3,3]=1.
 
         B = np.array(np.dot(CCr,np.dot(A,np.linalg.inv(CC))))
-        B[:,2]=B[:,2]-B[:,3]           
+        B[:,2]=B[:,2]-B[:,3]
         B = B[0:3,0:3]
         B = B/B[2,2]
         return np.array(B)
@@ -1170,5 +1120,66 @@ class ODM_Photo:
         return cv2.remap(image, map1, map2, cv2.INTER_LINEAR)
 
     ######################################################################################################################
-    # End of MicaSense image processing script
+    # Adapting Parrot Sequoia image processing script for multispectral calibration
+    # https://github.com/OpenDroneMap/ODM/commit/70b2913ec0377e72591288af0500de7c153b3656
+    # https://github.com/dobedobedo/Parrot_Sequoia_Image_Handler/tree/master/Modules
     ######################################################################################################################
+    def get_dark_level_sequoia(self):
+        # The second parameter of the sensor model will be used for calculation
+        if self.sensor_model is None:       # Exif SensorModel is missing
+            return None
+
+        sensor_pm = np.array([float(v) for v in self.sensor_model.split(",")])
+        log.ODM_INFO("Parrot Sequoia sensor model tag: %s" % sensor_pm[1])
+        return sensor_pm[1]
+
+    def get_radiometric_calibration_sequoia(self):
+        # The first parameter of the sensor model will be used for calculation
+        if self.sensor_model is None:       # Exif SensorModel is missing
+            return [None, None, None]
+
+        sensor_pm = np.array([float(v) for v in self.sensor_model.split(",")])
+        sfac = self.fnumber * self.fnumber / (sensor_pm[0] * 100.0 / 65536.0)
+        log.ODM_INFO("Parrot Sequoia radiometric calibration factor: %s" % sfac)
+        return [sfac, None, None]
+
+    def get_sun_sensor_sequoia(self):
+        if self.irradiance_calibration is None:      # Exif IrradianceCalibrationMeasurement is missing
+            return None
+
+        irrad_cal_pm = np.array([float(v) for v in self.irradiance_calibration.split(",")])
+        #    GainIndex          IntegTime              CH0              CH1
+        # irrad_cal_pm[0]=0  irrad_cal_pm[1]  irrad_cal_pm[2]  irrad_cal_pm[3]
+        # irrad_cal_pm[4]=1  irrad_cal_pm[5]  irrad_cal_pm[6]  irrad_cal_pm[7]
+        # irrad_cal_pm[8]=2  irrad_cal_pm[9]  irrad_cal_pm[10] irrad_cal_pm[11]
+        # irrad_cal_pm[12]=3 irrad_cal_pm[13] irrad_cal_pm[14] irrad_cal_pm[15]
+        irrad_cal_0 = irrad_cal_pm[2] * (600.0 / irrad_cal_pm[1])
+        irrad_cal_1 = irrad_cal_pm[6] * (600.0 / irrad_cal_pm[5])
+        irrad_cal_2 = irrad_cal_pm[10] * (600.0 / irrad_cal_pm[9])
+        irrad_cal_3 = irrad_cal_pm[14] * (600.0 / irrad_cal_pm[13])
+        irrad_cal_fac = [irrad_cal_0, irrad_cal_1, irrad_cal_2, irrad_cal_3]
+
+        irrad_binary = base64.b64decode(self.irradiance_list)
+
+        irrad_last3 = None
+        irrad_last2 = None
+        irrad_last1 = None
+
+        for irrad_pm in struct.iter_unpack("QHHHHfff", irrad_binary):
+            #                               Q=uint64 H=uint16 f=float32
+            # irrad_pm[0]=TimeStamp     irrad_pm[1]=CH0 count   irrad_pm[2]=CH1 count
+            # irrad_pm[3]=GainIndex     irrad_pm[4]=IntegTime
+            # irrad_pm[5]=Yaw           irrad_pm[6]=Pitch       irrad_pm[7]=Roll
+            #
+            irrad_fac = irrad_cal_fac[1]/irrad_cal_fac[irrad_pm[3]] * 600.0/irrad_pm[4]
+            irrad_last3 = irrad_last2
+            irrad_last2 = irrad_last1
+            irrad_last1 = irrad_pm[1] * irrad_fac
+
+        log.ODM_INFO("Parrot Sequoia irradiance last: [%s, %s, %s]" % (irrad_last1, irrad_last2, irrad_last3))
+
+        if irrad_last3 is None:     # No. of records less than 3
+            return None
+        else:
+            irrad_avg = (irrad_last1 + irrad_last2 + irrad_last3) / 3.0
+            return irrad_avg / irrad_cal_1
