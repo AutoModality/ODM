@@ -1024,8 +1024,8 @@ class ODM_Photo:
 
     ######################################################################################################################
     # Adapting MicaSense image processing script for thermal band alignment
-    # https://github.com/micasense/imageprocessing/blob/236cd23978116fd4cdfc79e4cd1cdc68e1b004d8/micasense/imageutils.py
-    # https://github.com/micasense/imageprocessing/blob/236cd23978116fd4cdfc79e4cd1cdc68e1b004d8/micasense/image.py
+    # - https://github.com/micasense/imageprocessing/blob/236cd23978116fd4cdfc79e4cd1cdc68e1b004d8/micasense/imageutils.py
+    # - https://github.com/micasense/imageprocessing/blob/236cd23978116fd4cdfc79e4cd1cdc68e1b004d8/micasense/image.py
     ######################################################################################################################
     def principal_point_px(self):
         principal_point = self.get_principal_point()
@@ -1120,27 +1120,23 @@ class ODM_Photo:
         return cv2.remap(image, map1, map2, cv2.INTER_LINEAR)
 
     ######################################################################################################################
-    # Adapting Parrot Sequoia image processing script for multispectral calibration
-    # https://github.com/OpenDroneMap/ODM/commit/70b2913ec0377e72591288af0500de7c153b3656
-    # https://github.com/dobedobedo/Parrot_Sequoia_Image_Handler/tree/master/Modules
+    # Parrot Sequoia image handler
+    # - https://github.com/OpenDroneMap/ODM/commit/70b2913ec0377e72591288af0500de7c153b3656
+    # - https://github.com/dobedobedo/Parrot_Sequoia_Image_Handler
     ######################################################################################################################
     def get_dark_level_sequoia(self):
-        # The second parameter of the sensor model will be used for calculation
         if self.sensor_model is None:       # Exif SensorModel is missing
             return None
 
         sensor_pm = np.array([float(v) for v in self.sensor_model.split(",")])
-        log.ODM_INFO("Parrot Sequoia sensor model tag: %s" % sensor_pm[1])
         return sensor_pm[1]
 
     def get_radiometric_calibration_sequoia(self):
-        # The first parameter of the sensor model will be used for calculation
         if self.sensor_model is None:       # Exif SensorModel is missing
             return [None, None, None]
 
         sensor_pm = np.array([float(v) for v in self.sensor_model.split(",")])
-        sfac = self.fnumber * self.fnumber / (sensor_pm[0] * 100.0 / 65536.0)
-        log.ODM_INFO("Parrot Sequoia radiometric calibration factor: %s" % sfac)
+        sfac = self.fnumber * self.fnumber / (sensor_pm[0] / 65535.0)
         return [sfac, None, None]
 
     def get_sun_sensor_sequoia(self):
@@ -1175,8 +1171,6 @@ class ODM_Photo:
             irrad_last3 = irrad_last2
             irrad_last2 = irrad_last1
             irrad_last1 = irrad_pm[1] * irrad_fac
-
-        log.ODM_INFO("Parrot Sequoia irradiance last: [%s, %s, %s]" % (irrad_last1, irrad_last2, irrad_last3))
 
         if irrad_last3 is None:     # No. of records less than 3
             return None
