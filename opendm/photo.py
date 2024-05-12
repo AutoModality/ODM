@@ -103,7 +103,6 @@ class ODM_Photo:
         self.camera_make = ''
         self.camera_model = ''
         self.orientation = 1
-        self.sensor_model = None
 
         # Geo tags
         self.latitude = None
@@ -142,6 +141,7 @@ class ODM_Photo:
         self.dls_roll = None
 
         # Irradiance calibration
+        self.sensor_model_coefficient = None
         self.spectral_irradiance = None
         self.horizontal_irradiance = None
         self.irradiance_scale_to_si = None
@@ -332,8 +332,8 @@ class ODM_Photo:
                     if band_name is not None:
                         self.band_name = band_name.replace(" ", "")
 
-                    self.set_attr_from_xmp_tag('sensor_model', xtags, [
-                        'Camera:SensorModel',   # Parrot Sequoia
+                    self.set_attr_from_xmp_tag('sensor_model_coefficient', xtags, [
+                        'Camera:SensorModel',
                     ])
 
                     self.set_attr_from_xmp_tag('band_index', xtags, [
@@ -1121,23 +1121,25 @@ class ODM_Photo:
 
     ######################################################################################################################
     # Parrot Sequoia image handler
-    # - https://github.com/OpenDroneMap/ODM/commit/70b2913ec0377e72591288af0500de7c153b3656
     # - https://github.com/dobedobedo/Parrot_Sequoia_Image_Handler
+    # - https://github.com/OpenDroneMap/ODM/commit/70b2913ec0377e72591288af0500de7c153b3656
     ######################################################################################################################
+
     def get_dark_level_sequoia(self):
-        if self.sensor_model is None:       # Exif SensorModel is missing
+        if self.sensor_model_coefficient is None:       # Exif SensorModel is missing
             return None
 
-        sensor_pm = np.array([float(v) for v in self.sensor_model.split(",")])
-        return sensor_pm[1]
+        sensor_coefs = np.array([float(v.strip(".")) for v in self.sensor_model_coefficient.split(",")])
+        return sensor_coefs[1]
 
     def get_radiometric_calibration_sequoia(self):
-        if self.sensor_model is None:       # Exif SensorModel is missing
+        if self.sensor_model_coefficient is None:       # Exif SensorModel is missing
             return [None, None, None]
 
-        sensor_pm = np.array([float(v) for v in self.sensor_model.split(",")])
-        sfac = self.fnumber * self.fnumber / (sensor_pm[0] / 65535.0)
-        return [sfac, None, None]
+        gain_scale = 100 * self.get_gain() * self.exposure_time
+        sensor_coefs = np.array([float(v.strip(".")) for v in self.sensor_model_coefficient.split(",")])
+        a1 = gain_scale * math.pow(self.fnumber, 2) / ((sensor_coefs[0] * self.exposure_time * self.iso_speed + sensor_coefs[2]) / 65536.0)
+        return [a1, None, None]
 
     def get_sun_sensor_sequoia(self):
         if self.irradiance_calibration is None:      # Exif IrradianceCalibrationMeasurement is missing
