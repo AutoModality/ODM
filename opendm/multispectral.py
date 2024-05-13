@@ -54,6 +54,8 @@ def dn_to_radiance(photo, image, band_vignetting_coefficients=None):
         x, y = np.meshgrid(np.arange(photo.width), np.arange(photo.height))
     else:
         V, x, y = vignette_map(photo)
+        if V is not None:
+            V = np.repeat(V[:, :, np.newaxis], image.shape[2], axis=2)
         if x is None:
             x, y = np.meshgrid(np.arange(photo.width), np.arange(photo.height))
 
@@ -67,13 +69,12 @@ def dn_to_radiance(photo, image, band_vignetting_coefficients=None):
     else:
         log.ODM_WARNING("Cannot normalize DN for %s, bit depth is missing" % photo.filename)
 
+    # Vignette correction
     if V is not None:
-        # vignette correction
-        V = np.repeat(V[:, :, np.newaxis], image.shape[2], axis=2)
         image *= V
 
+    # Row gradient correction
     if exposure_time and a2 is not None and a3 is not None:
-        # row gradient correction
         R = 1.0 / (1.0 + a2 * y / exposure_time - a3 * y)
         R = np.repeat(R[:, :, np.newaxis], image.shape[2], axis=2)
         image *= R
@@ -82,7 +83,7 @@ def dn_to_radiance(photo, image, band_vignetting_coefficients=None):
     if dark_level is not None:
         image[image < 0] = 0
 
-    # apply the radiometric calibration - i.e. scale by the gain-exposure product and
+    # Apply the radiometric calibration - i.e. scale by the gain-exposure product and
     # multiply with the radiometric calibration coefficient
 
     if gain is not None and exposure_time is not None:
@@ -785,7 +786,7 @@ def compute_band_vignette_map(multi_camera):
         ref_photo = photos[0]
 
         if ref_photo.camera_make == "Parrot" and ref_photo.camera_model == "Sequoia":
-            log.ODM_INFO("Computing band vignetting coefficients")
+            log.ODM_INFO("Computing %s band vignetting coefficients" % band['name'])
             vignetting_coefs = ref_photo.get_vignetting_coefficients_sequoia()
             if vignetting_coefs is not None:
                 band_vignette_map[band['name']] = vignetting_coefs

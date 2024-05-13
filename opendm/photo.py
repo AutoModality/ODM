@@ -1191,27 +1191,22 @@ class ODM_Photo:
             irrad_avg = (irrad_last1 + irrad_last2 + irrad_last3) / 3.0
             return irrad_avg / irrad_cal_1
 
-    def get_vignetting_polynomial_sequoia(self):
+    def get_vignetting_coefficients_sequoia(self):
         if self.vignetting_polynomial_power is None or self.vignetting_polynomial_coefficient is None:
             return None
 
+        # Create powers and coefficients tuple list
         powers = self.vignetting_polynomial_power.split(',')
         coefficients = self.vignetting_polynomial_coefficient.split(',')
-
         powers_coefficients = list()
         for i in range(0, len(powers), 2):
             powers_coefficients.append((int(powers[i]), int(powers[i+1]), float(coefficients[int(i/2)])))
-        return powers_coefficients
 
-    def get_vignetting_coefficients_sequoia(self):
-        vignetting_polynomial = self.get_vignetting_polynomial_sequoia()
-        if vignetting_polynomial is None:
-            return None
-
+        # Compute vignetting coefficients
         rows = self.height
         cols = self.width
         vig_array = np.ones((rows, cols))
-        power_array = np.array(self.get_vignetting_polynomial_sequoia())
+        power_array = np.array(powers_coefficients)
         for y, x in [(y, x) for y in range(rows) for x in range(cols)]:
             vig_array[y, x] = (power_array[:, 2] * np.power(x/cols, power_array[:, 0]) * np.power(y/rows, power_array[:, 1])).sum()
 
