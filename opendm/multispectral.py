@@ -93,7 +93,7 @@ def dn_to_radiance(photo, image):
 
 def vignette_map(photo):
     if photo.camera_make == "Parrot" and photo.camera_model == "Sequoia":
-        vignette = photo.compute_vignette_map()
+        vignette = photo.compute_vignette_map_sequoia()
         if vignette is None:
             return None, None, None
         else:
