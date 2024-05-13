@@ -92,6 +92,13 @@ def dn_to_radiance(photo, image):
     return image
 
 def vignette_map(photo):
+    if photo.camera_make == "Parrot" and photo.camera_model == "Sequoia":
+        vignette = photo.compute_vignette_map()
+        if vignette is None:
+            return None, None, None
+        else:
+            return 1.0 / vignette, None, None
+
     x_vc, y_vc = photo.get_vignetting_center()
     polynomial = photo.get_vignetting_polynomial()
 
@@ -196,7 +203,6 @@ def get_photos_by_band(multi_camera, user_band_name):
         if band['name'] == band_name:
             return band['photos']
 
-
 def get_primary_band_name(multi_camera, user_band_name):
     if len(multi_camera) < 1:
         raise Exception("Invalid multi_camera list")
@@ -213,7 +219,6 @@ def get_primary_band_name(multi_camera, user_band_name):
 
     log.ODM_WARNING("Cannot find band name \"%s\", will use \"%s\" instead" % (user_band_name, band_name_fallback))
     return band_name_fallback
-
 
 def compute_band_maps(multi_camera, primary_band):
     """
@@ -614,7 +619,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=2000,
         try:
             gaussian_filter_size = gaussian_filter_size + level * 2
             log.ODM_INFO("Computing ECC pyramid level %s using Gaussian filter size %s" % (level, gaussian_filter_size))
-            _, warp_matrix = cv2.findTransformECC(ig, aig, warp_matrix, cv2.MOTION_HOMOGRAPHY, criteria, inputMask=None, gaussFiltSize=gaussian_filter_size)            
+            _, warp_matrix = cv2.findTransformECC(ig, aig, warp_matrix, cv2.MOTION_HOMOGRAPHY, criteria, inputMask=None, gaussFiltSize=gaussian_filter_size)
         except Exception as e:
             if level != pyramid_levels:
                 log.ODM_INFO("Could not compute ECC warp_matrix at pyramid level %s, resetting matrix" % level)
@@ -726,7 +731,7 @@ def local_normalize(im):
     im = rank.equalize(norm, selem=selem)
     return im
 
-def align_image(image, warp_matrix, dimension, flags=cv2.INTER_LINEAR):    
+def align_image(image, warp_matrix, dimension, flags=cv2.INTER_LINEAR):
     if warp_matrix.shape == (3, 3):
         return cv2.warpPerspective(image, warp_matrix, dimension, flags=flags)
     else:

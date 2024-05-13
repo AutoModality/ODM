@@ -128,6 +128,8 @@ class ODM_Photo:
         self.bits_per_sample = None
         self.vignetting_center = None
         self.vignetting_polynomial = None
+        self.vignetting_polynomial_power = None
+        self.vignetting_polynomial_coefficient = None
         self.distortion_parameters = None
         self.principal_point = None
         self.focal_plane_resolution_x = None
@@ -358,6 +360,14 @@ class ODM_Photo:
                     self.set_attr_from_xmp_tag('vignetting_polynomial', xtags, [
                         'Camera:VignettingPolynomial',
                         'Sentera:VignettingPolynomial',
+                    ])
+
+                    self.set_attr_from_xmp_tag('vignetting_polynomial_power', xtags, [
+                        'Camera:VignettingPolynomial2DName' # Parrot Sequoia
+                    ])
+
+                    self.set_attr_from_xmp_tag('vignetting_polynomial_coefficient', xtags, [
+                        'Camera:VignettingPolynomial2D' # Parrot Sequoia
                     ])
 
                     self.set_attr_from_xmp_tag('principal_point', xtags, [
@@ -1179,3 +1189,31 @@ class ODM_Photo:
         else:
             irrad_avg = (irrad_last1 + irrad_last2 + irrad_last3) / 3.0
             return irrad_avg / irrad_cal_1
+
+    def get_vignetting_polynomial_sequoia(self):
+        if self.vignetting_polynomial_power is None or self.vignetting_polynomial_coefficient is None:
+            return None
+
+        log.ODM_INFO("Vignetting polynomial powers: %s" % self.vignetting_polynomial_power)
+        log.ODM_INFO("Vignetting polynomial coefficients: %s" % self.vignetting_polynomial_coefficient)
+
+        powers = self.vignetting_polynomial_power.split(',')
+        coefficients = self.vignetting_polynomial_coefficient.split(',')
+
+        powers_coefficients = list()
+        for i in range(0, len(powers), 2):
+            powers_coefficients.append((int(powers[i]), int(powers[i+1]), float(coefficients[int(i/2)])))
+        return powers_coefficients
+
+    def compute_vignette_map_sequoia(self):
+        vignetting_polynomial = self.get_vignetting_polynomial_sequoia()
+        if vignetting_polynomial is None:
+            return None
+
+        rows = self.height
+        cols = self.width
+        vig_array = np.ones((rows, cols))
+        power_array = np.array(self.get_vignetting_polynomial_sequoia())
+        for y, x in [(y, x) for y in range(rows) for x in range(cols)]:
+            vig_array[y, x] = (power_array[:, 2] * np.power(x/cols, power_array[:, 0]) * np.power(y/rows, power_array[:, 1])).sum()
+        return vig_array
