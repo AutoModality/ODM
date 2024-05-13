@@ -130,6 +130,7 @@ class ODM_Photo:
         self.vignetting_polynomial = None
         self.vignetting_polynomial_power = None
         self.vignetting_polynomial_coefficient = None
+        self.vignetting_coefficients = None
         self.distortion_parameters = None
         self.principal_point = None
         self.focal_plane_resolution_x = None
@@ -1194,9 +1195,6 @@ class ODM_Photo:
         if self.vignetting_polynomial_power is None or self.vignetting_polynomial_coefficient is None:
             return None
 
-        log.ODM_INFO("Vignetting polynomial powers: %s" % self.vignetting_polynomial_power)
-        log.ODM_INFO("Vignetting polynomial coefficients: %s" % self.vignetting_polynomial_coefficient)
-
         powers = self.vignetting_polynomial_power.split(',')
         coefficients = self.vignetting_polynomial_coefficient.split(',')
 
@@ -1205,7 +1203,7 @@ class ODM_Photo:
             powers_coefficients.append((int(powers[i]), int(powers[i+1]), float(coefficients[int(i/2)])))
         return powers_coefficients
 
-    def compute_vignette_map_sequoia(self):
+    def get_vignetting_coefficients_sequoia(self):
         vignetting_polynomial = self.get_vignetting_polynomial_sequoia()
         if vignetting_polynomial is None:
             return None
@@ -1216,4 +1214,7 @@ class ODM_Photo:
         power_array = np.array(self.get_vignetting_polynomial_sequoia())
         for y, x in [(y, x) for y in range(rows) for x in range(cols)]:
             vig_array[y, x] = (power_array[:, 2] * np.power(x/cols, power_array[:, 0]) * np.power(y/rows, power_array[:, 1])).sum()
-        return vig_array
+
+        self.vignetting_coefficients = 1.0 / vig_array
+
+        return 1.0 / vig_array

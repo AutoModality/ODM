@@ -98,6 +98,7 @@ class ODMOpenSfMStage(types.ODM_Stage):
 
         primary_band_name = None
         irradiance_info = None
+        vignetting_info = None
         alignment_info = None
         largest_photo = None
         undistort_pipeline = []
@@ -130,7 +131,8 @@ class ODMOpenSfMStage(types.ODM_Stage):
             else:
                 band_irradiance_mean = irradiance_info.get(photo.band_name)
                 # log.ODM_INFO("Horizontal irradiance for %s: %s (mean: %s)" % (photo.filename, photo.get_horizontal_irradiance(), band_irradiance_mean))
-                return multispectral.dn_to_reflectance(photo, image, band_irradiance_mean, use_sun_sensor=args.radiometric_calibration=="camera+sun")
+                band_vignette_map = vignetting_info.get(photo.band_name)
+                return multispectral.dn_to_reflectance(photo, image, band_irradiance_mean, band_vignette_map, use_sun_sensor=args.radiometric_calibration=="camera+sun")
 
         def align_to_primary_band(shot_id, image):
             photo = reconstruction.get_photo(shot_id)
@@ -174,6 +176,7 @@ class ODMOpenSfMStage(types.ODM_Stage):
         if reconstruction.multi_camera:
             largest_photo = find_largest_photo(photos)
             irradiance_info = multispectral.compute_band_irradiances(reconstruction.multi_camera)
+            vignetting_info = multispectral.compute_band_vignette_map(reconstruction.multi_camera)
             undistort_pipeline.append(resize_thermal_images)
 
         if args.radiometric_calibration != "none":

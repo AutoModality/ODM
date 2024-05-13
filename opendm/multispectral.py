@@ -17,7 +17,7 @@ from skimage.util import img_as_ubyte
 
 # Loosely based on https://github.com/micasense/imageprocessing/blob/master/micasense/utils.py
 
-def dn_to_radiance(photo, image):
+def dn_to_radiance(photo, image, band_vignetting_coefficients=None):
     """
     Convert Digital Number values to Radiance values
     :param photo ODM_Photo
@@ -49,9 +49,13 @@ def dn_to_radiance(photo, image):
     if a1 is None and photometric_exp is not None:
         a1 = photometric_exp
 
-    V, x, y = vignette_map(photo)
-    if x is None:
+    if band_vignetting_coefficients is not None:
+        V = band_vignetting_coefficients
         x, y = np.meshgrid(np.arange(photo.width), np.arange(photo.height))
+    else:
+        V, x, y = vignette_map(photo)
+        if x is None:
+            x, y = np.meshgrid(np.arange(photo.width), np.arange(photo.height))
 
     if dark_level is not None:
         image -= dark_level
@@ -92,13 +96,6 @@ def dn_to_radiance(photo, image):
     return image
 
 def vignette_map(photo):
-    if photo.camera_make == "Parrot" and photo.camera_model == "Sequoia":
-        vignette = photo.compute_vignette_map_sequoia()
-        if vignette is None:
-            return None, None, None
-        else:
-            return 1.0 / vignette, None, None
-
     x_vc, y_vc = photo.get_vignetting_center()
     polynomial = photo.get_vignetting_polynomial()
 
@@ -130,8 +127,8 @@ def vignette_map(photo):
 
     return None, None, None
 
-def dn_to_reflectance(photo, image, band_irradiance, use_sun_sensor=True):
-    radiance = dn_to_radiance(photo, image)
+def dn_to_reflectance(photo, image, band_irradiance, band_vignetting=None, use_sun_sensor=True):
+    radiance = dn_to_radiance(photo, image, band_vignetting)
 
     if band_irradiance is not None and use_sun_sensor is not True:
         irradiance = band_irradiance
@@ -776,3 +773,24 @@ def resize_match(image, dimension):
                 interpolation=(cv2.INTER_AREA if (fx < 1.0 and fy < 1.0) else cv2.INTER_LANCZOS4))
 
     return image
+
+######################################################################################################################
+# Custom image band vignetting handler
+######################################################################################################################
+def compute_band_vignette_map(multi_camera):
+    band_vignette_map = {}
+
+    for band in multi_camera:
+        photos = get_photos_by_band(multi_camera, band['name'])
+        ref_photo = photos[0]
+
+        if ref_photo.camera_make == "Parrot" and ref_photo.camera_model == "Sequoia":
+            log.ODM_INFO("Computing band vignetting coefficients")
+            vignetting_coefs = ref_photo.get_vignetting_coefficients_sequoia()
+            if vignetting_coefs is not None:
+                band_vignette_map[band['name']] = vignetting_coefs
+                log.ODM_INFO("%s band's vignetting coefficients: %s" % (band['name'], band_vignette_map.get(band['name'])))
+
+        band_vignette_map[band['name']] = None
+
+    return band_vignette_map
