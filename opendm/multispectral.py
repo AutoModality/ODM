@@ -186,8 +186,11 @@ def compute_irradiance(photo, use_sun_sensor=True):
     return 1.0
 
 def radiometric_calibrate(photo, image, image_type='reflectance', irradiance_by_hand=None, vignetting_info=None, use_sun_sensor=True):
+    band_irradiance_mean = None
     if irradiance_by_hand is not None:
         band_irradiance_mean = irradiance_by_hand.get(photo.band_name)
+
+    band_vignette_map = None
     if vignetting_info is not None:
         band_vignette_map = vignetting_info.get(photo.band_name)
 
