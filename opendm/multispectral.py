@@ -17,7 +17,7 @@ from skimage.util import img_as_ubyte
 
 # Loosely based on https://github.com/micasense/imageprocessing/blob/master/micasense/utils.py
 
-def dn_to_radiance(photo, image):
+def dn_to_radiance(photo, image, band_vignetting_coefficients=None):
     """
     Convert Digital Number values to Radiance values
     :param photo ODM_Photo
@@ -49,9 +49,15 @@ def dn_to_radiance(photo, image):
     if a1 is None and photometric_exp is not None:
         a1 = photometric_exp
 
-    V, x, y = vignette_map(photo)
-    if x is None:
+    if band_vignetting_coefficients is not None:
+        V = band_vignetting_coefficients
         x, y = np.meshgrid(np.arange(photo.width), np.arange(photo.height))
+    else:
+        V, x, y = vignette_map(photo)
+        if V is not None:
+            V = np.repeat(V[:, :, np.newaxis], image.shape[2], axis=2)
+        if x is None:
+            x, y = np.meshgrid(np.arange(photo.width), np.arange(photo.height))
 
     if dark_level is not None:
         image -= dark_level
@@ -63,13 +69,12 @@ def dn_to_radiance(photo, image):
     else:
         log.ODM_WARNING("Cannot normalize DN for %s, bit depth is missing" % photo.filename)
 
+    # Vignette correction
     if V is not None:
-        # vignette correction
-        V = np.repeat(V[:, :, np.newaxis], image.shape[2], axis=2)
         image *= V
 
+    # Row gradient correction
     if exposure_time and a2 is not None and a3 is not None:
-        # row gradient correction
         R = 1.0 / (1.0 + a2 * y / exposure_time - a3 * y)
         R = np.repeat(R[:, :, np.newaxis], image.shape[2], axis=2)
         image *= R
@@ -78,7 +83,7 @@ def dn_to_radiance(photo, image):
     if dark_level is not None:
         image[image < 0] = 0
 
-    # apply the radiometric calibration - i.e. scale by the gain-exposure product and
+    # Apply the radiometric calibration - i.e. scale by the gain-exposure product and
     # multiply with the radiometric calibration coefficient
 
     if gain is not None and exposure_time is not None:
@@ -123,8 +128,8 @@ def vignette_map(photo):
 
     return None, None, None
 
-def dn_to_reflectance(photo, image, band_irradiance, use_sun_sensor=True):
-    radiance = dn_to_radiance(photo, image)
+def dn_to_reflectance(photo, image, band_irradiance, band_vignetting=None, use_sun_sensor=True):
+    radiance = dn_to_radiance(photo, image, band_vignetting)
 
     if band_irradiance is not None and use_sun_sensor is not True:
         irradiance = band_irradiance
@@ -180,12 +185,20 @@ def compute_irradiance(photo, use_sun_sensor=True):
 
     return 1.0
 
-def radiometric_calibrate(photo, image, image_type='reflectance', irradiance_by_hand=None, use_sun_sensor=True):
+def radiometric_calibrate(photo, image, image_type='reflectance', irradiance_by_hand=None, vignetting_info=None, use_sun_sensor=True):
+    band_irradiance_mean = None
     if irradiance_by_hand is not None:
         band_irradiance_mean = irradiance_by_hand.get(photo.band_name)
 
+    band_vignette_map = None
+    if vignetting_info is not None:
+        band_vignette_map = vignetting_info.get(photo.band_name)
+
     if not photo.is_thermal():
-        return dn_to_reflectance(photo, image, band_irradiance_mean, use_sun_sensor) if image_type == 'reflectance' else dn_to_radiance(photo, image)
+        if image_type == 'reflectance':
+            return dn_to_reflectance(photo, image, band_irradiance_mean, band_vignette_map, use_sun_sensor)
+        else:
+            return dn_to_radiance(photo, image, band_vignette_map)
     else:
         return thermal.dn_to_temperature(photo, image)
 
@@ -195,7 +208,6 @@ def get_photos_by_band(multi_camera, user_band_name):
     for band in multi_camera:
         if band['name'] == band_name:
             return band['photos']
-
 
 def get_primary_band_name(multi_camera, user_band_name):
     if len(multi_camera) < 1:
@@ -213,7 +225,6 @@ def get_primary_band_name(multi_camera, user_band_name):
 
     log.ODM_WARNING("Cannot find band name \"%s\", will use \"%s\" instead" % (user_band_name, band_name_fallback))
     return band_name_fallback
-
 
 def compute_band_maps(multi_camera, primary_band):
     """
@@ -393,7 +404,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
                     for m2 in matrices_samples:
                         image_raw = imread(os.path.join(images_path, m2['filename']), unchanged=True, anydepth=True)
                         photo_raw = next((p for p in band['photos'] if p.filename == m2['filename']), None)
-                        image_raw = radiometric_calibrate(photo_raw, image_raw, 'radiance', irradiance_by_hand, use_sun_sensor)
+                        image_raw = radiometric_calibrate(photo_raw, image_raw, 'radiance', irradiance_by_hand, None, use_sun_sensor)
                         if image_raw.shape[2] == 3:
                             image_gray = to_8bit(cv2.cvtColor(image_raw, cv2.COLOR_BGR2GRAY))
                         else:
@@ -458,7 +469,7 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
     try:
         # Convert images to grayscale if needed
         image = imread(image_filename, unchanged=True, anydepth=True)
-        image = radiometric_calibrate(photo, image, 'radiance', irradiance_by_hand, use_sun_sensor)
+        image = radiometric_calibrate(photo, image, 'radiance', irradiance_by_hand, None, use_sun_sensor)
         if image.shape[2] == 3:
             image_gray = to_8bit(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))
         else:
@@ -469,7 +480,7 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
         #    log.ODM_WARNING("Small image for band alignment (%sx%s), this might be tough to compute." % (image_gray.shape[1], image_gray.shape[0]))
 
         align_image = imread(align_image_filename, unchanged=True, anydepth=True)
-        align_image = radiometric_calibrate(align_photo, align_image, 'radiance', irradiance_by_hand, use_sun_sensor)
+        align_image = radiometric_calibrate(align_photo, align_image, 'radiance', irradiance_by_hand, None, use_sun_sensor)
         if align_image.shape[2] == 3:
             align_image_gray = to_8bit(cv2.cvtColor(align_image, cv2.COLOR_BGR2GRAY))
         else:
@@ -614,7 +625,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=2000,
         try:
             gaussian_filter_size = gaussian_filter_size + level * 2
             log.ODM_INFO("Computing ECC pyramid level %s using Gaussian filter size %s" % (level, gaussian_filter_size))
-            _, warp_matrix = cv2.findTransformECC(ig, aig, warp_matrix, cv2.MOTION_HOMOGRAPHY, criteria, inputMask=None, gaussFiltSize=gaussian_filter_size)            
+            _, warp_matrix = cv2.findTransformECC(ig, aig, warp_matrix, cv2.MOTION_HOMOGRAPHY, criteria, inputMask=None, gaussFiltSize=gaussian_filter_size)
         except Exception as e:
             if level != pyramid_levels:
                 log.ODM_INFO("Could not compute ECC warp_matrix at pyramid level %s, resetting matrix" % level)
@@ -726,7 +737,7 @@ def local_normalize(im):
     im = rank.equalize(norm, selem=selem)
     return im
 
-def align_image(image, warp_matrix, dimension, flags=cv2.INTER_LINEAR):    
+def align_image(image, warp_matrix, dimension, flags=cv2.INTER_LINEAR):
     if warp_matrix.shape == (3, 3):
         return cv2.warpPerspective(image, warp_matrix, dimension, flags=flags)
     else:
@@ -771,3 +782,24 @@ def resize_match(image, dimension):
                 interpolation=(cv2.INTER_AREA if (fx < 1.0 and fy < 1.0) else cv2.INTER_LANCZOS4))
 
     return image
+
+######################################################################################################################
+# Custom image band vignetting handler
+######################################################################################################################
+def compute_band_vignette_map(multi_camera):
+    band_vignette_map = {}
+
+    for band in multi_camera:
+        photos = get_photos_by_band(multi_camera, band['name'])
+        ref_photo = photos[0]
+
+        if ref_photo.camera_make == "Parrot" and ref_photo.camera_model == "Sequoia":
+            log.ODM_INFO("Computing %s band vignetting coefficients" % band['name'])
+            vignetting_coefs = ref_photo.get_vignetting_coefficients_sequoia()
+            if vignetting_coefs is not None:
+                band_vignette_map[band['name']] = vignetting_coefs
+                log.ODM_INFO("%s band's vignetting coefficients: %s" % (band['name'], band_vignette_map.get(band['name'])))
+
+        band_vignette_map[band['name']] = None
+
+    return band_vignette_map
