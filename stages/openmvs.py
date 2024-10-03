@@ -19,6 +19,7 @@ class ODMOpenMVSStage(types.ODM_Stage):
         reconstruction = outputs['reconstruction']
         photos = reconstruction.photos
         octx = OSFMContext(tree.opensfm)
+        pc_tile = False
 
         if not photos:
             raise system.ExitException('Not enough photos in photos array to start OpenMVS')
@@ -64,13 +65,14 @@ class ODMOpenMVSStage(types.ODM_Stage):
             filter_point_th = -20
 
             config = [
-                " --resolution-level %s" % int(resolution_level),
+                "--resolution-level %s" % int(resolution_level),
                 '--dense-config-file "%s"' % densify_ini_file,
                 "--min-resolution %s" % depthmap_resolution,
                 "--max-resolution %s" % int(outputs['undist_image_max_size']),
                 "--max-threads %s" % args.max_concurrency,
                 "--number-views-fuse %s" % number_views_fuse,
                 "--sub-resolution-levels %s" % subres_levels,
+                "--archive-type 3",
                 '-w "%s"' % depthmaps_dir,
                 "-v 0"
             ]
@@ -78,13 +80,9 @@ class ODMOpenMVSStage(types.ODM_Stage):
             gpu_config = []
             use_gpu = has_gpu(args)
             if use_gpu:
-                #gpu_config.append("--cuda-device -3")
                 gpu_config.append("--cuda-device -1")
             else:
                 gpu_config.append("--cuda-device -2")
-
-            if args.pc_tile:
-                config.append("--fusion-mode 1")
 
             extra_config = []
 
@@ -98,12 +96,13 @@ class ODMOpenMVSStage(types.ODM_Stage):
 
             sharp = 7 if args.pc_geometric else (0 if args.pc_filter == 0 else args.pc_sharp)
             with open(densify_ini_file, 'w+') as f:
-                f.write("Optimize = %s\n" % sharp)
+                f.write("Optimize = %s\nMin Views Filter = 1\n" % sharp)
 
             def run_densify():
                 system.run('"%s" "%s" %s' % (context.omvs_densify_path,
                                         openmvs_scene_file,
                                         ' '.join(config + gpu_config + extra_config)))
+
             try:
                 run_densify()
             except system.SubprocessException as e:
@@ -113,9 +112,9 @@ class ODMOpenMVSStage(types.ODM_Stage):
                     log.ODM_WARNING("OpenMVS failed with GPU, is your graphics card driver up to date? Falling back to CPU.")
                     gpu_config = ["--cuda-device -2"]
                     run_densify()
-                elif (e.errorCode == 137 or e.errorCode == 3221226505) and not args.pc_tile:
+                elif (e.errorCode == 137 or e.errorCode == 143 or e.errorCode == 3221226505) and not pc_tile:
                     log.ODM_WARNING("OpenMVS ran out of memory, we're going to turn on tiling to see if we can process this.")
-                    args.pc_tile = True
+                    pc_tile = True
                     config.append("--fusion-mode 1")
                     run_densify()
                 else:
@@ -125,15 +124,15 @@ class ODMOpenMVSStage(types.ODM_Stage):
             files_to_remove = []
             scene_dense = os.path.join(tree.openmvs, 'scene_dense.mvs')
 
-            if args.pc_tile:
+            if pc_tile:
                 log.ODM_INFO("Computing sub-scenes")
 
                 subscene_densify_ini_file = os.path.join(tree.openmvs, 'subscene-config.ini')
                 with open(subscene_densify_ini_file, 'w+') as f:
-                    f.write("Optimize = 0\n")
+                    f.write("Optimize = 0\nEstimation Geometric Iters = 0\nMin Views Filter = 1\n")
 
                 config = [
-                    "--sub-scene-area 660000",
+                    "--sub-scene-area 660000", # 8000
                     "--max-threads %s" % args.max_concurrency,
                     '-w "%s"' % depthmaps_dir,
                     "-v 0",
@@ -165,9 +164,13 @@ class ODMOpenMVSStage(types.ODM_Stage):
                             '--resolution-level %s' % int(resolution_level),
                             "--min-resolution %s" % depthmap_resolution,
                             '--max-resolution %s' % int(outputs['undist_image_max_size']),
+                            "--sub-resolution-levels %s" % subres_levels,
                             '--dense-config-file "%s"' % subscene_densify_ini_file,
                             '--number-views-fuse %s' % number_views_fuse,
                             '--max-threads %s' % args.max_concurrency,
+                            '--archive-type 3',
+                            '--postprocess-dmaps 0',
+                            '--geometric-iters 0',
                             '-w "%s"' % depthmaps_dir,
                             '-v 0',
                         ]
@@ -183,7 +186,7 @@ class ODMOpenMVSStage(types.ODM_Stage):
                         else:
                             # Filter
                             if args.pc_filter > 0:
-                                system.run('"%s" "%s" --filter-point-cloud %s -v 0 %s' % (context.omvs_densify_path, scene_dense_mvs, filter_point_th, ' '.join(gpu_config)))
+                                system.run('"%s" "%s" --filter-point-cloud %s -v 0 --archive-type 3 %s' % (context.omvs_densify_path, scene_dense_mvs, filter_point_th, ' '.join(gpu_config)))
                             else:
                                 # Just rename
                                 log.ODM_INFO("Skipped filtering, %s --> %s" % (scene_ply_unfiltered, scene_ply))
@@ -223,7 +226,7 @@ class ODMOpenMVSStage(types.ODM_Stage):
                         try:
                             system.run('"%s" %s' % (context.omvs_densify_path, ' '.join(config + gpu_config + extra_config)))
                         except system.SubprocessException as e:
-                            if e.errorCode == 137 or e.errorCode == 3221226505:
+                            if e.errorCode == 137 or e.errorCode == 143 or e.errorCode == 3221226505:
                                 log.ODM_WARNING("OpenMVS filtering ran out of memory, visibility checks will be skipped.")
                                 skip_filtering()
                             else:

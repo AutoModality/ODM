@@ -13,6 +13,100 @@ processopts = ['dataset', 'split', 'merge', 'opensfm', 'openmvs', 'odm_filterpoi
                'odm_meshing', 'mvs_texturing', 'odm_georeferencing',
                'odm_dem', 'odm_orthophoto', 'odm_report', 'odm_postprocess']
 
+rerun_stages = {
+    '3d_tiles': 'odm_postprocess',
+    'align': 'odm_georeferencing',
+    'auto_boundary': 'odm_filterpoints',
+    'auto_boundary_distance': 'odm_filterpoints',
+    'bg_removal': 'dataset',
+    'boundary': 'odm_filterpoints',
+    'build_overviews': 'odm_orthophoto',
+    'camera_lens': 'dataset',
+    'cameras': 'dataset',
+    'cog': 'odm_dem',
+    'copy_to': 'odm_postprocess',
+    'crop': 'odm_georeferencing',
+    'dem_decimation': 'odm_dem',
+    'dem_euclidean_map': 'odm_dem',
+    'dem_gapfill_steps': 'odm_dem',
+    'dem_resolution': 'odm_dem',
+    'dsm': 'odm_dem',
+    'dtm': 'odm_dem',
+    'end_with': None,
+    'fast_orthophoto': 'odm_filterpoints',
+    'feature_quality': 'opensfm',
+    'feature_type': 'opensfm',
+    'force_gps': 'opensfm',
+    'gcp': 'dataset',
+    'geo': 'dataset',
+    'gltf': 'mvs_texturing',
+    'gps_accuracy': 'dataset',
+    'help': None,
+    'ignore_gsd': 'opensfm',
+    'matcher_neighbors': 'opensfm',
+    'matcher_order': 'opensfm',
+    'matcher_type': 'opensfm',
+    'max_concurrency': None,
+    'merge': 'Merge',
+    'mesh_octree_depth': 'odm_meshing',
+    'mesh_size': 'odm_meshing',
+    'min_num_features': 'opensfm',
+    'name': None,
+    'no_gpu': None,
+    'optimize_disk_space': None,
+    'orthophoto_compression': 'odm_orthophoto',
+    'orthophoto_cutline': 'odm_orthophoto',
+    'orthophoto_kmz': 'odm_orthophoto',
+    'orthophoto_no_tiled': 'odm_orthophoto',
+    'orthophoto_png': 'odm_orthophoto',
+    'orthophoto_resolution': 'odm_orthophoto',
+    'pc_classify': 'odm_georeferencing',
+    'pc_copc': 'odm_georeferencing',
+    'pc_csv': 'odm_georeferencing',
+    'pc_ept': 'odm_georeferencing',
+    'pc_filter': 'openmvs',
+    'pc_las': 'odm_georeferencing',
+    'pc_quality': 'opensfm',
+    'pc_rectify': 'odm_georeferencing',
+    'pc_sample': 'odm_filterpoints',
+    'pc_skip_geometric': 'openmvs',
+    'primary_band': 'dataset',
+    'project_path': None,
+    'radiometric_calibration': 'opensfm',
+    'rerun': None,
+    'rerun_all': None,
+    'rerun_from': None,
+    'rolling_shutter': 'opensfm',
+    'rolling_shutter_readout': 'opensfm',
+    'sfm_algorithm': 'opensfm',
+    'sfm_no_partial': 'opensfm',
+    'skip_3dmodel': 'odm_meshing',
+    'skip_band_alignment': 'opensfm',
+    'skip_orthophoto': 'odm_orthophoto',
+    'skip_report': 'odm_report',
+    'sky_removal': 'dataset',
+    'sm_cluster': 'split',
+    'sm_no_align': 'split',
+    'smrf_scalar': 'odm_dem',
+    'smrf_slope': 'odm_dem',
+    'smrf_threshold': 'odm_dem',
+    'smrf_window': 'odm_dem',
+    'split': 'split',
+    'split_image_groups': 'split',
+    'split_overlap': 'split',
+    'texturing_keep_unseen_faces': 'mvs_texturing',
+    'texturing_single_material': 'mvs_texturing',
+    'texturing_skip_global_seam_leveling': 'mvs_texturing',
+    'tiles': 'odm_dem',
+    'use_3dmesh': 'mvs_texturing',
+    'use_exif': 'dataset',
+    'use_fixed_camera_params': 'opensfm',
+    'use_hybrid_bundle_adjustment': 'opensfm',
+    'version': None,
+    'video_limit': 'dataset',
+    'video_resolution': 'dataset',
+}
+
 with open(os.path.join(context.root_path, 'VERSION')) as version_file:
     __version__ = version_file.read().strip()
 
@@ -123,8 +217,8 @@ def config(argv=None, parser=None):
     parser.add_argument('--feature-type',
                         metavar='<string>',
                         action=StoreValue,
-                        default='sift',
-                        choices=['akaze', 'hahog', 'orb', 'sift'],
+                        default='dspsift',
+                        choices=['akaze', 'dspsift', 'hahog', 'orb', 'sift'],
                         help=('Choose the algorithm for extracting keypoints and computing descriptors. '
                             'Can be one of: %(choices)s. Default: '
                             '%(default)s'))
@@ -154,6 +248,13 @@ def config(argv=None, parser=None):
                         type=int,
                         help='Perform image matching with the nearest images based on GPS exif data. Set to 0 to match by triangulation. Default: %(default)s')
 
+    parser.add_argument('--matcher-order',
+                        metavar='<positive integer>',
+                        action=StoreValue,
+                        default=0,
+                        type=int,
+                        help='Perform image matching with the nearest N images based on image filename order. Can speed up processing of sequential images, such as those extracted from video. It is applied only on non-georeferenced datasets. Set to 0 to disable. Default: %(default)s')
+
     parser.add_argument('--use-fixed-camera-params',
                         action=StoreTrue,
                         nargs=0,
@@ -175,7 +276,7 @@ def config(argv=None, parser=None):
             metavar='<string>',
             action=StoreValue,
             default='auto',
-            choices=['auto', 'perspective', 'brown', 'fisheye', 'spherical', 'equirectangular', 'dual'],
+            choices=['auto', 'perspective', 'brown', 'fisheye', 'fisheye_opencv', 'spherical', 'equirectangular', 'dual'],
             help=('Set a camera projection type. Manually setting a value '
                 'can help improve geometric undistortion. By default the application '
                 'tries to determine a lens type from the images metadata. Can be one of: %(choices)s. Default: '
@@ -251,6 +352,12 @@ def config(argv=None, parser=None):
                         'Can be one of: %(choices)s. Default: '
                         '%(default)s'))
 
+    parser.add_argument('--sfm-no-partial',
+                action=StoreTrue,
+                nargs=0,
+                default=False,
+                help='Do not attempt to merge partial reconstructions. This can happen when images do not have sufficient overlap or are isolated. Default: %(default)s')
+
     parser.add_argument('--sky-removal',
                 action=StoreTrue,
                 nargs=0,
@@ -291,10 +398,11 @@ def config(argv=None, parser=None):
                         action=StoreTrue,
                         nargs=0,
                         default=False,
-                        help='Ignore Ground Sampling Distance (GSD). GSD '
-                        'caps the maximum resolution of image outputs and '
-                        'resizes images when necessary, resulting in faster processing and '
-                        'lower memory usage. Since GSD is an estimate, sometimes ignoring it can result in slightly better image output quality. Default: %(default)s')
+                        help='Ignore Ground Sampling Distance (GSD).'
+                        'A memory and processor hungry change relative to the default behavior if set to true. '
+                        'Ordinarily, GSD estimates are used to cap the maximum resolution of image outputs and resizes images when necessary, resulting in faster processing and lower memory usage. '
+                        'Since GSD is an estimate, sometimes ignoring it can result in slightly better image output quality. '
+                        'Never set --ignore-gsd to true unless you are positive you need it, and even then: do not use it. Default: %(default)s')
 
     parser.add_argument('--no-gpu',
                     action=StoreTrue,
@@ -409,7 +517,7 @@ def config(argv=None, parser=None):
                         metavar='<positive float>',
                         action=StoreValue,
                         type=float,
-                        default=2.5,
+                        default=5,
                         help='Filters the point cloud by removing points that deviate more than N standard deviations from the local mean. Set to 0 to disable filtering. '
                              'Default: %(default)s')
 
@@ -514,12 +622,6 @@ def config(argv=None, parser=None):
                         nargs=0,
                         default=False,
                         help=('Skip normalization of colors across all images. Useful when processing radiometric data. Default: %(default)s'))
-
-    parser.add_argument('--texturing-skip-local-seam-leveling',
-                        action=StoreTrue,
-                        nargs=0,
-                        default=False,
-                        help='Skip the blending of colors near seams. Default: %(default)s')
 
     parser.add_argument('--texturing-keep-unseen-faces',
                         action=StoreTrue,
@@ -629,7 +731,7 @@ def config(argv=None, parser=None):
                         action=StoreValue,
                         type=float,
                         default=5,
-                        help='DSM/DTM resolution in cm / pixel. Note that this value is capped to 2x the ground sampling distance (GSD) estimate. To remove the cap, check --ignore-gsd also.'
+                        help='DSM/DTM resolution in cm / pixel. Note that this value is capped by a ground sampling distance (GSD) estimate.'
                              ' Default: %(default)s')
 
     parser.add_argument('--dem-decimation',
@@ -656,7 +758,7 @@ def config(argv=None, parser=None):
                         action=StoreValue,
                         default=5,
                         type=float,
-                        help=('Orthophoto resolution in cm / pixel. Note that this value is capped by a ground sampling distance (GSD) estimate. To remove the cap, check --ignore-gsd also. '
+                        help=('Orthophoto resolution in cm / pixel. Note that this value is capped by a ground sampling distance (GSD) estimate.'
                               'Default: %(default)s'))
 
     parser.add_argument('--orthophoto-no-tiled',
@@ -765,7 +867,7 @@ def config(argv=None, parser=None):
                         default=4000,
                         metavar='<positive integer>',
                         help='The maximum output resolution of extracted video frames in pixels. Default: %(default)s')
-    
+
     parser.add_argument('--split',
                         type=int,
                         action=StoreValue,
@@ -835,7 +937,7 @@ def config(argv=None, parser=None):
                         type=float,
                         action=StoreValue,
                         metavar='<positive float>',
-                        default=10,
+                        default=3,
                         help='Set a value in meters for the GPS Dilution of Precision (DOP) '
                         'information for all images. If your images are tagged '
                         'with high precision GPS information (RTK), this value will be automatically '
@@ -877,7 +979,7 @@ def config(argv=None, parser=None):
                           'Default: %(default)s'))
 
     args, unknown = parser.parse_known_args(argv)
-    DEPRECATED = ["--verbose", "--debug", "--time", "--resize-to", "--depthmap-resolution", "--pc-geometric", "--texturing-data-term", "--texturing-outlier-removal-type", "--texturing-tone-mapping"]
+    DEPRECATED = ["--verbose", "--debug", "--time", "--resize-to", "--depthmap-resolution", "--pc-geometric", "--texturing-data-term", "--texturing-outlier-removal-type", "--texturing-tone-mapping", "--texturing-skip-local-seam-leveling"]
     unknown_e = [p for p in unknown if p not in DEPRECATED]
     if len(unknown_e) > 0:
         raise parser.error("unrecognized arguments: %s" % " ".join(unknown_e))
