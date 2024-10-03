@@ -33,7 +33,7 @@ class ODMeshingStage(types.ODM_Stage):
             else:
                 log.ODM_WARNING('Found a valid ODM Mesh file in: %s' %
                                 tree.odm_mesh)
-        
+
         self.update_progress(50)
 
         # Always generate a 2.5D mesh for texturing and orthophoto projection
@@ -82,18 +82,18 @@ class ODMeshingStage(types.ODM_Stage):
 
                 mesh.create_25dmesh(dem_input, tree.odm_25dmesh,
                         radius_steps=radius_steps,
-                        dsm_resolution=dem_resolution, 
+                        dsm_resolution=dem_resolution,
                         depth=self.params.get('oct_tree'),
                         maxVertexCount=self.params.get('max_vertex'),
                         samples=self.params.get('samples'),
                         available_cores=args.max_concurrency,
                         method='poisson' if args.fast_orthophoto else 'gridded',
                         smooth_dsm=True,
-                        use_dtm=args.texturing_use_dtm)
-                
+                        use_dtm=args.texturing_use_dtm,
+                        max_tiles=None if reconstruction.has_geotagged_photos() else math.ceil(len(reconstruction.photos) / 2))
+
                 if io.file_exists(tree.filtered_point_cloud_classified):
                     os.remove(tree.filtered_point_cloud_classified)
             else:
                 log.ODM_WARNING('Found a valid ODM 2.5D Mesh file in: %s' %
                                 tree.odm_25dmesh)
-

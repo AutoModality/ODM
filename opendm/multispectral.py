@@ -137,6 +137,8 @@ def dn_to_reflectance(photo, image, band_irradiance, band_vignetting=None, use_s
         irradiance = compute_irradiance(photo, use_sun_sensor=use_sun_sensor)
 
     reflectance = radiance * math.pi / irradiance
+    reflectance[reflectance < 0.0] = 0.0
+    reflectance[reflectance > 1.0] = 1.0
 
     return reflectance
 
@@ -213,8 +215,13 @@ def get_primary_band_name(multi_camera, user_band_name):
     if len(multi_camera) < 1:
         raise Exception("Invalid multi_camera list")
 
-    # multi_camera is already sorted by band_index
+    # Pick RGB, or Green, or Blue, in this order, if available, otherwise first band
     if user_band_name == "auto":
+        for aliases in [['rgb', 'redgreenblue'], ['green', 'g'], ['blue', 'b']]:
+            for band in multi_camera:
+                if band['name'].lower() in aliases:
+                    return band['name']
+
         return multi_camera[0]['name']
 
     for band in multi_camera:
@@ -568,6 +575,18 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=2000,
     # https://stackoverflow.com/questions/45997891/cv2-motion-euclidean-for-the-warp-mode-in-ecc-image-alignment-method
     pyramid_levels = 0
     h,w = image_gray.shape
+    max_dim = max(h, w)
+    downscale = 0
+
+    max_size = 2048
+    while max_dim / (2**downscale) > max_size:
+        downscale += 1
+
+    if downscale > 0:
+        f = 1 / (2**downscale)
+        image_gray = cv2.resize(image_gray, None, fx=f, fy=f, interpolation=cv2.INTER_AREA)
+        h,w = image_gray.shape
+
     min_dim = min(h, w)
 
     if (min_dim <= 300):
@@ -609,6 +628,9 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=2000,
         align_image_pyr.insert(0, cv2.resize(align_image_pyr[0], None, fx=1/2, fy=1/2,
                                 interpolation=cv2.INTER_AREA))
 
+    # Define the motion model, scale the initial warp matrix to smallest level
+    warp_matrix = np.eye(3, 3, dtype=np.float32)
+
     for level in range(pyramid_levels+1):
         ig = gradient(gaussian(normalize(image_gray_pyr[level])))
         aig = gradient(gaussian(normalize(align_image_pyr[level])))
@@ -629,7 +651,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=2000,
         except Exception as e:
             if level != pyramid_levels:
                 log.ODM_INFO("Could not compute ECC warp_matrix at pyramid level %s, resetting matrix" % level)
-                warp_matrix = default_matrix * np.array([[1,1,2],[1,1,2],[0.5,0.5,1]], dtype=np.float32)**(1-(pyramid_levels+1))
+                warp_matrix = np.eye(3, 3, dtype=np.float32)
             else:
                 # raise e
                 return None
@@ -638,12 +660,38 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=2000,
         if level != pyramid_levels:
             warp_matrix = warp_matrix * np.array([[1,1,2],[1,1,2],[0.5,0.5,1]], dtype=np.float32)
 
-    return warp_matrix
+    if downscale > 0:
+        return warp_matrix * (np.array([[1,1,2],[1,1,2],[0.5,0.5,1]], dtype=np.float32) ** downscale)
+    else:
+        return warp_matrix
 
 def find_features_homography(image_gray, align_image_gray, feature_retention=0.8, min_match_count=4):
 
     # Detect SIFT features and compute descriptors.
-    detector = cv2.SIFT_create() # edgeThreshold=10, contrastThreshold=0.1 (default 0.04)
+    detector = cv2.SIFT_create(edgeThreshold=10, contrastThreshold=0.1)
+
+    h,w = image_gray.shape
+    max_dim = max(h, w)
+    downscale = 0
+
+    max_size = 4096
+    while max_dim / (2**downscale) > max_size:
+        downscale += 1
+
+    if downscale > 0:
+        f = 1 / (2**downscale)
+        image_gray = cv2.resize(image_gray, None, fx=f, fy=f, interpolation=cv2.INTER_AREA)
+        h,w = image_gray.shape
+
+    if align_image_gray.shape[0] != image_gray.shape[0]:
+        fx = image_gray.shape[1]/align_image_gray.shape[1]
+        fy = image_gray.shape[0]/align_image_gray.shape[0]
+
+        align_image_gray = cv2.resize(align_image_gray, None,
+                        fx=fx,
+                        fy=fy,
+                        interpolation=(cv2.INTER_AREA if (fx < 1.0 and fy < 1.0) else cv2.INTER_LANCZOS4))
+
     kp_image, desc_image = detector.detectAndCompute(image_gray, None)
     kp_align_image, desc_align_image = detector.detectAndCompute(align_image_gray, None)
 
@@ -684,7 +732,13 @@ def find_features_homography(image_gray, align_image_gray, feature_retention=0.8
 
     # Find homography
     h, _ = cv2.findHomography(points_image, points_align_image, cv2.RANSAC)
-    return h
+    if h is None:
+        return None
+
+    if downscale > 0:
+        return h * (np.array([[1,1,2],[1,1,2],[0.5,0.5,1]], dtype=np.float32) ** downscale)
+    else:
+        return h
 
 def find_rig_homography(photo, align_photo, image_gray, align_image_gray):
     image_undistorted_gray = photo.undistorted(image_gray)

@@ -64,11 +64,11 @@ def get_geojson_shots_from_opensfm(reconstruction_file, utm_srs=None, utm_offset
 
                 for filename in recon.get('shots', {}):
                     shot = recon['shots'][filename]
-                    cam = shot.get('camera')
-                    if (not cam in cameras) or (filename in added_shots):
+                    cam_id = shot.get('camera')
+                    if (not cam_id in cameras) or (filename in added_shots):
                         continue
 
-                    cam = cameras[cam]
+                    cam = cameras[cam_id]
                     if pseudo_geocoords is not None:
                         Rs, T = pseudo_geocoords[:3, :3], pseudo_geocoords[:3, 3]
                         Rs1 = np.linalg.inv(Rs)
@@ -104,6 +104,7 @@ def get_geojson_shots_from_opensfm(reconstruction_file, utm_srs=None, utm_offset
                         'type': 'Feature',
                         'properties': {
                             'filename': filename,
+                            'camera': cam_id,
                             'focal': cam.get('focal', cam.get('focal_x')), # Focal ratio = focal length (mm) / max(sensor_width, sensor_height) (mm)
                             'width': cam.get('width', 0),
                             'height': cam.get('height', 0),
@@ -146,4 +147,17 @@ def merge_geojson_shots(geojson_shots_files, output_geojson_file):
                     result['features'].append(feat)
     
     with open(output_geojson_file, "w") as f:
+        f.write(json.dumps(result))
+
+def merge_cameras(cameras_json_files, output_cameras_file):
+    result = {}
+    for cameras_file in cameras_json_files:
+        with open(cameras_file, "r") as f:
+            cameras = json.loads(f.read())
+        
+        for cam_id in cameras:
+            if not cam_id in result:
+                result[cam_id] = cameras[cam_id]
+    
+    with open(output_cameras_file, "w") as f:
         f.write(json.dumps(result))
