@@ -1,12 +1,14 @@
 import os
+import numpy as np
 import rasterio
 
 from datetime import datetime
-from osgeo import gdal
+from osgeo import gdal, gdal_array
 from opendm import io
 from opendm import log
 from opendm import types
 from opendm import photo
+from opendm.cogeo import convert_to_cogeo
 from opendm.utils import copy_paths, get_processing_results_paths
 from opendm.ogctiles import build_3dtiles
 
