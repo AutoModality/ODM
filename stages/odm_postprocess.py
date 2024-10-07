@@ -19,24 +19,6 @@ class ODMPostProcess(types.ODM_Stage):
 
         log.ODM_INFO("Post Processing")
 
-        rasters = [tree.odm_orthophoto_tif,
-                    tree.path("odm_dem", "dsm.tif"),
-                    tree.path("odm_dem", "dtm.tif")]
-
-        mean_capture_time = photo.find_mean_utc_time(reconstruction.photos)
-        mean_capture_dt = None
-        if mean_capture_time is not None:
-            mean_capture_dt = datetime.fromtimestamp(mean_capture_time).strftime('%Y:%m:%d %H:%M:%S') + '+00:00'
-
-        # Add TIFF tags
-        for product in rasters:
-            if os.path.isfile(product):
-                log.ODM_INFO("Adding TIFFTAGs to {}".format(product))
-                with rasterio.open(product, 'r+') as rst:
-                    if mean_capture_dt is not None:
-                        rst.update_tags(TIFFTAG_DATETIME=mean_capture_dt)
-                    rst.update_tags(TIFFTAG_SOFTWARE='ODM {}'.format(log.odm_version()))
-
         # GCP info
         if not outputs['large']:
             # TODO: support for split-merge?
@@ -104,10 +86,30 @@ class ODMPostProcess(types.ODM_Stage):
             except Exception as e:
                 log.ODM_WARNING("Cannot generate normalized DSM. %s" % str(e))
 
+        # Add TIFF tags
+        rasters = [tree.odm_orthophoto_tif,
+                    tree.path("odm_dem", "dsm.tif"),
+                    tree.path("odm_dem", "dtm.tif"),
+                    tree.path("odm_dem", "ndsm.tif")]
 
+        mean_capture_time = photo.find_mean_utc_time(reconstruction.photos)
+        mean_capture_dt = None
+        if mean_capture_time is not None:
+            mean_capture_dt = datetime.fromtimestamp(mean_capture_time).strftime('%Y:%m:%d %H:%M:%S') + '+00:00'
+
+        for product in rasters:
+            if os.path.isfile(product):
+                log.ODM_INFO("Adding TIFFTAGs to {}".format(product))
+                with rasterio.open(product, 'r+') as rst:
+                    if mean_capture_dt is not None:
+                        rst.update_tags(TIFFTAG_DATETIME=mean_capture_dt)
+                    rst.update_tags(TIFFTAG_SOFTWARE='ODM {}'.format(log.odm_version()))
+
+        # Generate OGC 3D tiles outputs
         if getattr(args, '3d_tiles'):
             build_3dtiles(args, tree, reconstruction, self.rerun())
 
+        # Copy output results to a designated folder
         if args.copy_to:
             try:
                 copy_paths([os.path.join(args.project_path, p) for p in get_processing_results_paths()], args.copy_to, self.rerun())
