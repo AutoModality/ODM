@@ -64,6 +64,17 @@ class ODMPostProcess(types.ODM_Stage):
                 dtm_band = dtm_ds.GetRasterBand(1)
                 dtm_array = np.ma.masked_equal(dtm_band.ReadAsArray(), dtm_band.GetNoDataValue())
 
+                # Check and align the shapes of both arrays
+                if dsm_array.shape[0] < dtm_array.shape[0]:
+                    dtm_array = dtm_array[0:dsm_array.shape[0], :]
+                elif dsm_array.shape[0] > dtm_array.shape[0]:
+                    dsm_array = dsm_array[0:dtm_array.shape[0], :]
+
+                if dsm_array.shape[1] < dtm_array.shape[1]:
+                    dtm_array = dtm_array[:, 0:dsm_array.shape[1]]
+                elif dsm_array.shape[1] > dtm_array.shape[1]:
+                    dsm_array = dsm_array[:, 0:dtm_array.shape[1]]
+
                 # nDSM = DSM - DTM
                 ndsm_data = dsm_array - dtm_array
                 ndsm_ds = gdal_array.SaveArray(ndsm_data, ndsm, "GTIFF", dsm_ds)
