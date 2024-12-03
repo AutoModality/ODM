@@ -358,6 +358,15 @@ def config(argv=None, parser=None):
                 default=False,
                 help='Do not attempt to merge partial reconstructions. This can happen when images do not have sufficient overlap or are isolated. Default: %(default)s')
 
+    parser.add_argument('--min-num-views',
+                        metavar='<integer: 1 <= x <= 3>',
+                        action=StoreValue,
+                        default=3,
+                        type=int,
+                        help=('The minumum number of views that should reconstruct a point for it to be valid during the point densification process. '
+                              'Use lower values if the raw images have less overlap. Lower values result in denser point clouds but with more noise. '
+                              'Default: %(default)s'))
+
     parser.add_argument('--sky-removal',
                 action=StoreTrue,
                 nargs=0,
