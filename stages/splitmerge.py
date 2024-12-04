@@ -15,7 +15,7 @@ from opensfm.large import metadataset
 from opendm.cropper import Cropper
 from opendm.concurrency import get_max_memory
 from opendm.remote import LocalRemoteExecutor
-from opendm.shots import merge_geojson_shots
+from opendm.shots import merge_geojson_shots, merge_cameras
 from opendm import point_cloud
 from opendm.utils import double_quote
 from opendm.tiles.tiler import generate_dem_tiles
@@ -29,14 +29,15 @@ class ODMSplitStage(types.ODM_Stage):
         photos = reconstruction.photos
         outputs['large'] = False
 
-        should_split = len(photos) > args.split
+        image_groups_file = os.path.join(args.project_path, "image_groups.txt")
+        if 'split_image_groups_is_set' in args:
+            image_groups_file = os.path.abspath(args.split_image_groups)
 
-        if should_split:
-            # check for availability of either image_groups.txt (split-merge) or geotagged photos
-            image_groups_file = os.path.join(args.project_path, "image_groups.txt")
-            if 'split_image_groups_is_set' in args:
-                image_groups_file = os.path.abspath(args.split_image_groups)
-            if io.file_exists(image_groups_file) or reconstruction.has_geotagged_photos():
+        if io.file_exists(image_groups_file):
+            outputs['large'] = True
+        elif len(photos) > args.split:
+            # check for availability of geotagged photos
+            if reconstruction.has_geotagged_photos():
                 outputs['large'] = True
             else:
                 log.ODM_WARNING('Could not perform split-merge as GPS information in photos or image_groups.txt is missing.')
@@ -132,7 +133,7 @@ class ODMSplitStage(types.ODM_Stage):
                         log.ODM_INFO("Reconstructing %s" % sp)
                         local_sp_octx = OSFMContext(sp)
                         local_sp_octx.create_tracks(self.rerun())
-                        local_sp_octx.reconstruct(args.rolling_shutter, True, self.rerun())
+                        local_sp_octx.reconstruct(args.rolling_shutter, not args.sfm_no_partial, self.rerun())
                 else:
                     lre = LocalRemoteExecutor(args.sm_cluster, args.rolling_shutter, self.rerun())
                     lre.set_projects([os.path.abspath(os.path.join(p, "..")) for p in submodel_paths])
@@ -266,7 +267,7 @@ class ODMMergeStage(types.ODM_Stage):
 
                         orthophoto_vars = orthophoto.get_orthophoto_vars(args)
                         orthophoto.merge(all_orthos_and_ortho_cuts, tree.odm_orthophoto_tif, orthophoto_vars)
-                        orthophoto.post_orthophoto_steps(args, merged_bounds_file, tree.odm_orthophoto_tif, tree.orthophoto_tiles)
+                        orthophoto.post_orthophoto_steps(args, merged_bounds_file, tree.odm_orthophoto_tif, tree.orthophoto_tiles, args.orthophoto_resolution)
                     elif len(all_orthos_and_ortho_cuts) == 1:
                         # Simply copy
                         log.ODM_WARNING("A single orthophoto/cutline pair was found between all submodels.")
@@ -306,7 +307,7 @@ class ODMMergeStage(types.ODM_Stage):
                         log.ODM_INFO("Created %s" % dem_file)
                         
                         if args.tiles:
-                            generate_dem_tiles(dem_file, tree.path("%s_tiles" % human_name.lower()), args.max_concurrency)
+                            generate_dem_tiles(dem_file, tree.path("%s_tiles" % human_name.lower()), args.max_concurrency, args.dem_resolution)
                         
                         if args.cog:
                             convert_to_cogeo(dem_file, max_workers=args.max_concurrency)
@@ -335,6 +336,15 @@ class ODMMergeStage(types.ODM_Stage):
                 merge_geojson_shots(geojson_shots_files, geojson_shots)
             else:
                 log.ODM_WARNING("Found merged shots.geojson in %s" % tree.odm_report)
+
+            # Merge cameras
+            cameras_json = tree.path("cameras.json")
+            if not io.file_exists(cameras_json) or self.rerun():
+                cameras_json_files = get_submodel_paths(tree.submodels_path, "cameras.json")
+                log.ODM_INFO("Merging %s cameras.json files" % len(cameras_json_files))
+                merge_cameras(cameras_json_files, cameras_json)
+            else:
+                log.ODM_WARNING("Found merged cameras.json in %s" % tree.root_path)
 
             # Stop the pipeline short by skipping to the postprocess stage.
             # Afterwards, we're done.

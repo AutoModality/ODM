@@ -9,8 +9,8 @@ from opendm import point_cloud
 from scipy import signal
 import numpy as np
 
-def create_25dmesh(inPointCloud, outMesh, radius_steps=["0.05"], dsm_resolution=0.05, depth=8, samples=1, maxVertexCount=100000, 
-                   available_cores=None, method='gridded', smooth_dsm=True, use_dtm=False):
+def create_25dmesh(inPointCloud, outMesh, radius_steps=["0.05"], dsm_resolution=0.05, depth=8, samples=1, maxVertexCount=100000,
+                   available_cores=None, method='gridded', smooth_dsm=True, use_dtm=False, max_tiles=None):
     # Create DSM from point cloud
 
     # Create temporary directory
@@ -36,16 +36,17 @@ def create_25dmesh(inPointCloud, outMesh, radius_steps=["0.05"], dsm_resolution=
             outdir=tmp_directory,
             resolution=dsm_resolution,
             max_workers=available_cores,
-            apply_smoothing=smooth_dsm
+            apply_smoothing=smooth_dsm,
+            max_tiles=max_tiles
         )
 
     if method == 'gridded':
         mesh = dem_to_mesh_gridded(os.path.join(tmp_directory, mesh_dem + '.tif'), outMesh, maxVertexCount, maxConcurrency=max(1, available_cores))
     elif method == 'poisson':
         dsm_points = dem_to_points(os.path.join(tmp_directory, mesh_dem + '.tif'), os.path.join(tmp_directory, 'dsm_points.ply'))
-        mesh = screened_poisson_reconstruction(dsm_points, outMesh, depth=depth, 
-                                    samples=samples, 
-                                    maxVertexCount=maxVertexCount, 
+        mesh = screened_poisson_reconstruction(dsm_points, outMesh, depth=depth,
+                                    samples=samples,
+                                    maxVertexCount=maxVertexCount,
                                     threads=max(1, available_cores - 1)), # poissonrecon can get stuck on some machines if --threads == all cores
     else:
         raise 'Not a valid method: ' + method
@@ -89,7 +90,7 @@ def dem_to_mesh_gridded(inGeotiff, outMesh, maxVertexCount, maxConcurrency=1):
 
     outMeshDirty = os.path.join(mesh_path, "{}.dirty{}".format(basename, ext))
 
-    # This should work without issues most of the times, 
+    # This should work without issues most of the times,
     # but just in case we lower maxConcurrency if it fails.
     while True:
         try:
@@ -116,7 +117,7 @@ def dem_to_mesh_gridded(inGeotiff, outMesh, maxVertexCount, maxConcurrency=1):
                 raise e
 
 
-    # Cleanup and reduce vertex count if necessary 
+    # Cleanup and reduce vertex count if necessary
     # (as dem2mesh cannot guarantee that we'll have the target vertex count)
     cleanupArgs = {
         'reconstructmesh': context.omvs_reconstructmesh_path,
@@ -127,6 +128,7 @@ def dem_to_mesh_gridded(inGeotiff, outMesh, maxVertexCount, maxConcurrency=1):
 
     system.run('"{reconstructmesh}" -i "{infile}" '
          '-o "{outfile}" '
+         '--archive-type 3 '
          '--remove-spikes 0 --remove-spurious 0 --smooth 0 '
          '--target-face-num {max_faces} -v 0'.format(**cleanupArgs))
 
@@ -149,7 +151,7 @@ def screened_poisson_reconstruction(inPointCloud, outMesh, depth = 8, samples = 
     outMeshDirty = os.path.join(mesh_path, "{}.dirty{}".format(basename, ext))
     if os.path.isfile(outMeshDirty):
         os.remove(outMeshDirty)
-    
+
     # Since PoissonRecon has some kind of a race condition on ppc64el, and this helps...
     if platform.machine() == 'ppc64le':
         log.ODM_WARNING("ppc64le platform detected, forcing single-threaded operation for PoissonRecon")
@@ -178,7 +180,7 @@ def screened_poisson_reconstruction(inPointCloud, outMesh, depth = 8, samples = 
                     '--linearFit '.format(**poissonReconArgs))
         except Exception as e:
             log.ODM_WARNING(str(e))
-            
+
         if os.path.isfile(outMeshDirty):
             break # Done!
         else:
@@ -190,7 +192,7 @@ def screened_poisson_reconstruction(inPointCloud, outMesh, depth = 8, samples = 
             if threads < 1:
                 break
             else:
-                log.ODM_WARNING("PoissonRecon failed with %s threads, let's retry with %s..." % (threads, threads // 2))
+                log.ODM_WARNING("PoissonRecon failed with %s threads, let's retry with %s..." % (threads * 2, threads))
 
 
     # Cleanup and reduce vertex count if necessary
@@ -203,6 +205,7 @@ def screened_poisson_reconstruction(inPointCloud, outMesh, depth = 8, samples = 
 
     system.run('"{reconstructmesh}" -i "{infile}" '
          '-o "{outfile}" '
+         '--archive-type 3 '
          '--remove-spikes 0 --remove-spurious 20 --smooth 0 '
          '--target-face-num {max_faces} -v 0'.format(**cleanupArgs))
 

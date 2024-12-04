@@ -6,12 +6,13 @@ import datetime
 import dateutil.parser
 import shutil
 import multiprocessing
+from repoze.lru import lru_cache
 
-from opendm.loghelpers import double_quote, args_to_dict
+from opendm.arghelpers import double_quote, args_to_dict
 from vmem import virtual_memory
 
-if sys.platform == 'win32':
-    # No colors on Windows, sorry!
+if sys.platform == 'win32' or os.getenv('no_ansiesc'):
+    # No colors on Windows (sorry !) or existing no_ansiesc env variable 
     HEADER = ''
     OKBLUE = ''
     OKGREEN = ''
@@ -30,6 +31,7 @@ else:
 
 lock = threading.Lock()
 
+@lru_cache(maxsize=None)
 def odm_version():
     with open(os.path.join(os.path.dirname(__file__), "..", "VERSION")) as f:
         return f.read().split("\n")[0].strip()

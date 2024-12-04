@@ -22,7 +22,18 @@ from xml.parsers.expat import ExpatError
 from opensfm.sensors import sensor_data
 from opensfm.geo import ecef_from_lla
 
-projections = ['perspective', 'fisheye', 'brown', 'dual', 'equirectangular', 'spherical']
+projections = ['perspective', 'fisheye', 'fisheye_opencv', 'brown', 'dual', 'equirectangular', 'spherical']
+
+def find_mean_utc_time(photos):
+    utc_times = []
+    for p in photos:
+        if p.utc_time is not None:
+            utc_times.append(p.utc_time / 1000.0)
+    if len(utc_times) == 0:
+        return None
+
+    return np.mean(utc_times)
+
 
 def find_largest_photo_dims(photos):
     max_mp = 0
@@ -331,7 +342,7 @@ class ODM_Photo:
 
             for xtags in xmp:
                 try:
-                    band_name = self.get_xmp_tag(xtags, ['Camera:BandName', '@Camera:BandName'])
+                    band_name = self.get_xmp_tag(xtags, ['Camera:BandName', '@Camera:BandName', 'FLIR:BandName'])
                     if band_name is not None:
                         self.band_name = band_name.replace(" ", "")
 
@@ -478,6 +489,17 @@ class ODM_Photo:
                             '@drone-dji:FlightZSpeed',
                         ], float)
 
+                    # DJI MS
+                    if self.black_level is None and 'Camera:BlackCurrent' in xtags:
+                        self.set_attr_from_xmp_tag('black_level', xtags, [
+                            'Camera:BlackCurrent'
+                        ], str)
+                    if '@drone-dji:ExposureTime' in xtags:
+                        self.set_attr_from_xmp_tag('exposure_time', xtags, [
+                            '@drone-dji:ExposureTime'
+                        ], float)
+                        self.exposure_time /= 1e6 # is in microseconds
+
                     # Account for over-estimation
                     if self.gps_xy_stddev is not None:
                         self.gps_xy_stddev *= 2.0
@@ -492,6 +514,12 @@ class ODM_Photo:
                     camera_projection = self.get_xmp_tag(xtags, ['@Camera:ModelType', 'Camera:ModelType'])
                     if camera_projection is not None:
                         camera_projection = camera_projection.lower()
+
+                        # Parrot Sequoia's "fisheye" model maps to "fisheye_opencv"
+                        # or better yet, replace all fisheye with fisheye_opencv, but wait to change API signature
+                        if camera_projection == "fisheye":
+                            camera_projection = "fisheye_opencv"
+
                         if camera_projection in projections:
                             self.camera_projection = camera_projection
 
@@ -679,8 +707,10 @@ class ODM_Photo:
                 else:
                     result.append(None)
             return result
-        else:
+        elif hasattr(tag.values, 'den'):
             return [float(tag.values.num) / float(tag.values.den) if tag.values.den != 0 else None]
+        else:
+            return [None]
 
     def float_value(self, tag):
         v = self.float_values(tag)
@@ -690,6 +720,8 @@ class ODM_Photo:
     def int_values(self, tag):
         if isinstance(tag.values, list):
             return [int(v) for v in tag.values]
+        elif isinstance(tag.values, str) and tag.values == '':
+            return []
         else:
             return [int(tag.values)]
 
@@ -1032,6 +1064,9 @@ class ODM_Photo:
             return self.width * self.height / 1e6
         else:
             return 0.0
+
+    def is_make_model(self, make, model):
+        return self.camera_make.lower() == make.lower() and self.camera_model.lower() == model.lower()
 
     ######################################################################################################################
     # Adapting MicaSense image processing script for thermal band alignment

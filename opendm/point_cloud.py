@@ -9,6 +9,8 @@ from opendm.concurrency import parallel_map
 from opendm.utils import double_quote
 from opendm.boundary import as_polygon, as_geojson
 from opendm.dem.pdal import run_pipeline
+from opendm.opc import classify
+from opendm.dem import commands
 
 def ply_info(input_ply):
     if not os.path.exists(input_ply):
@@ -275,6 +277,32 @@ def merge_ply(input_point_cloud_files, output_file, dims=None):
     system.run(' '.join(cmd))
 
 def post_point_cloud_steps(args, tree, rerun=False):
+    # Classify and rectify before generating derivate files
+    if args.pc_classify:
+        pc_classify_marker = os.path.join(tree.odm_georeferencing, 'pc_classify_done.txt')
+
+        if not io.file_exists(pc_classify_marker) or rerun:
+            log.ODM_INFO("Classifying {} using Simple Morphological Filter (1/2)".format(tree.odm_georeferencing_model_laz))
+            commands.classify(tree.odm_georeferencing_model_laz,
+                                args.smrf_scalar, 
+                                args.smrf_slope, 
+                                args.smrf_threshold, 
+                                args.smrf_window
+                            )
+
+            log.ODM_INFO("Classifying {} using OpenPointClass (2/2)".format(tree.odm_georeferencing_model_laz))
+            classify(tree.odm_georeferencing_model_laz, args.max_concurrency)
+
+            with open(pc_classify_marker, 'w') as f:
+                f.write('Classify: smrf\n')
+                f.write('Scalar: {}\n'.format(args.smrf_scalar))
+                f.write('Slope: {}\n'.format(args.smrf_slope))
+                f.write('Threshold: {}\n'.format(args.smrf_threshold))
+                f.write('Window: {}\n'.format(args.smrf_window))
+    
+    if args.pc_rectify:
+        commands.rectify(tree.odm_georeferencing_model_laz)
+
     # XYZ point cloud output
     if args.pc_csv:
         log.ODM_INFO("Creating CSV file (XYZ format)")
@@ -300,7 +328,7 @@ def post_point_cloud_steps(args, tree, rerun=False):
                     tree.odm_georeferencing_model_laz,
                     tree.odm_georeferencing_model_las))
         else:
-            log.ODM_WARNING("Found existing LAS file %s" % tree.odm_georeferencing_xyz_file)
+            log.ODM_WARNING("Found existing LAS file %s" % tree.odm_georeferencing_model_las)
 
     # EPT point cloud output
     if args.pc_ept:
@@ -312,4 +340,4 @@ def post_point_cloud_steps(args, tree, rerun=False):
         log.ODM_INFO("Creating Cloud Optimized Point Cloud (COPC)")
 
         copc_output = io.related_file_path(tree.odm_georeferencing_model_laz, postfix=".copc")
-        entwine.build_copc([tree.odm_georeferencing_model_laz], copc_output)
+        entwine.build_copc([tree.odm_georeferencing_model_laz], copc_output, convert_rgb_8_to_16=True)
