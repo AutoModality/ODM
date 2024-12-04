@@ -59,9 +59,10 @@ class ODMOpenMVSStage(types.ODM_Stage):
             log.ODM_INFO("Running dense reconstruction. This might take a while.")
 
             log.ODM_INFO("Estimating depthmaps")
-            number_views_fuse = 2
+            number_views = args.min_num_views - 1 # The number of views that OpenMVS considers for depthmap estimation
+            number_views_fuse = 2 # The minimum number of images that agrees with an estimate during fusion in order to consider it inlier
             densify_ini_file = os.path.join(tree.openmvs, 'Densify.ini')
-            subres_levels = 0 # The number of lower resolutions to process before estimating output resolution depthmap, 0=disabled
+            subres_levels = 0 # The number of lower resolutions to process before estimating output resolution depthmap (0 = disabled)
             filter_point_th = -20
 
             config = [
@@ -96,7 +97,7 @@ class ODMOpenMVSStage(types.ODM_Stage):
 
             sharp = 7 if args.pc_geometric else (0 if args.pc_filter == 0 else args.pc_sharp)
             with open(densify_ini_file, 'w+') as f:
-                f.write("Optimize = %s\nMin Views Filter = 1\n" % sharp)
+                f.write("Optimize = %s\nMin Views Filter = %s\n" % (sharp, number_views))
 
             def run_densify():
                 system.run('"%s" "%s" %s' % (context.omvs_densify_path,
@@ -129,7 +130,7 @@ class ODMOpenMVSStage(types.ODM_Stage):
 
                 subscene_densify_ini_file = os.path.join(tree.openmvs, 'subscene-config.ini')
                 with open(subscene_densify_ini_file, 'w+') as f:
-                    f.write("Optimize = 0\nEstimation Geometric Iters = 0\nMin Views Filter = 1\n")
+                    f.write("Optimize = 0\nEstimation Geometric Iters = 0\nMin Views Filter = %s\n" % (number_views))
 
                 config = [
                     "--sub-scene-area 660000", # 8000

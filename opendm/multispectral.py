@@ -187,7 +187,7 @@ def compute_irradiance(photo, use_sun_sensor=True):
 
     return 1.0
 
-def radiometric_calibrate(photo, image, image_type='reflectance', irradiance_by_hand=None, vignetting_info=None, use_sun_sensor=True):
+def radiometric_calibrate(photo, image, images_path, image_type='reflectance', irradiance_by_hand=None, vignetting_info=None, use_sun_sensor=True):
     band_irradiance_mean = None
     if irradiance_by_hand is not None:
         band_irradiance_mean = irradiance_by_hand.get(photo.band_name)
@@ -202,7 +202,7 @@ def radiometric_calibrate(photo, image, image_type='reflectance', irradiance_by_
         else:
             return dn_to_radiance(photo, image, band_vignette_map)
     else:
-        return thermal.dn_to_temperature(photo, image)
+        return thermal.dn_to_temperature(photo, image, images_path)
 
 def get_photos_by_band(multi_camera, user_band_name):
     band_name = get_primary_band_name(multi_camera, user_band_name)
@@ -369,6 +369,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
                                                                       os.path.join(images_path, primary_band_photo.filename),
                                                                       photo,
                                                                       primary_band_photo,
+                                                                      images_path,
                                                                       irradiance_by_hand,
                                                                       use_sun_sensor,
                                                                       rig_optimization)
@@ -411,7 +412,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
                     for m2 in matrices_samples:
                         image_raw = imread(os.path.join(images_path, m2['filename']), unchanged=True, anydepth=True)
                         photo_raw = next((p for p in band['photos'] if p.filename == m2['filename']), None)
-                        image_raw = radiometric_calibrate(photo_raw, image_raw, 'radiance', irradiance_by_hand, None, use_sun_sensor)
+                        image_raw = radiometric_calibrate(photo_raw, image_raw, images_path, 'radiance', irradiance_by_hand, None, use_sun_sensor)
                         if image_raw.shape[2] == 3:
                             image_gray = to_8bit(cv2.cvtColor(image_raw, cv2.COLOR_BGR2GRAY))
                         else:
@@ -472,11 +473,11 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
 
     return alignment_info
 
-def compute_homography(image_filename, align_image_filename, photo, align_photo, irradiance_by_hand=None, use_sun_sensor=True, rig_optimization=False):
+def compute_homography(image_filename, align_image_filename, photo, align_photo, images_path, irradiance_by_hand=None, use_sun_sensor=True, rig_optimization=False):
     try:
         # Convert images to grayscale if needed
         image = imread(image_filename, unchanged=True, anydepth=True)
-        image = radiometric_calibrate(photo, image, 'radiance', irradiance_by_hand, None, use_sun_sensor)
+        image = radiometric_calibrate(photo, image, images_path, 'radiance', irradiance_by_hand, None, use_sun_sensor)
         if image.shape[2] == 3:
             image_gray = to_8bit(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))
         else:
@@ -487,7 +488,7 @@ def compute_homography(image_filename, align_image_filename, photo, align_photo,
         #    log.ODM_WARNING("Small image for band alignment (%sx%s), this might be tough to compute." % (image_gray.shape[1], image_gray.shape[0]))
 
         align_image = imread(align_image_filename, unchanged=True, anydepth=True)
-        align_image = radiometric_calibrate(align_photo, align_image, 'radiance', irradiance_by_hand, None, use_sun_sensor)
+        align_image = radiometric_calibrate(align_photo, align_image, images_path, 'radiance', irradiance_by_hand, None, use_sun_sensor)
         if align_image.shape[2] == 3:
             align_image_gray = to_8bit(cv2.cvtColor(align_image, cv2.COLOR_BGR2GRAY))
         else:
