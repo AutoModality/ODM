@@ -44,20 +44,12 @@ class ODMeshingStage(types.ODM_Stage):
                 log.ODM_INFO('Writing ODM 2.5D Mesh file in: %s' % tree.odm_25dmesh)
 
                 pc_quality_scale = {
-                    'ultra': 2.0, # capped to 2X
-                    'high': 4.0,
-                    'medium': 8.0,
-                    'low': 16.0,
-                    'lowest': 16.0 # capped to 16X
+                    'ultra': 1.0,
+                    'high': 2.0,
+                    'medium': 4.0,
+                    'low': 8.0,
+                    'lowest': 16.0
                 }
-                if args.texturing_use_dtm:
-                    pc_quality_scale = {
-                        'ultra': 1.0,
-                        'high': 2.0,
-                        'medium': 4.0,
-                        'low': 8.0,
-                        'lowest': 16.0
-                    }
                 dem_resolution = gsd.cap_resolution(args.dem_resolution, tree.opensfm_reconstruction,
                                                     gsd_scaling=pc_quality_scale[args.pc_quality],
                                                     ignore_gsd=args.ignore_gsd,
