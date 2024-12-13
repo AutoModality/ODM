@@ -22,7 +22,7 @@ class ODMDEMStage(types.ODM_Stage):
         pc_model_found = io.file_exists(dem_input)
         ignore_resolution = False
         pseudo_georeference = False
-        
+
         if not reconstruction.is_georeferenced():
             log.ODM_WARNING("Not georeferenced, using ungeoreferenced point cloud...")
             ignore_resolution = True
@@ -35,7 +35,7 @@ class ODMDEMStage(types.ODM_Stage):
             'low': 8.0,
             'lowest': 16.0
         }
-        resolution = gsd.cap_resolution(args.dem_resolution, tree.opensfm_reconstruction, 
+        resolution = gsd.cap_resolution(args.dem_resolution, tree.opensfm_reconstruction,
                                         gsd_scaling=pc_quality_scale[args.pc_quality],
                                         ignore_gsd=args.ignore_gsd,
                                         ignore_resolution=ignore_resolution and args.ignore_gsd,
@@ -82,6 +82,7 @@ class ODMDEMStage(types.ODM_Stage):
                             decimation=args.dem_decimation,
                             max_workers=args.max_concurrency,
                             with_euclidean_map=args.dem_euclidean_map,
+                            apply_smoothing=True if product == 'dtm' else False,
                             max_tiles=None if reconstruction.has_geotagged_photos() else math.ceil(len(reconstruction.photos) / 2)
                         )
 
@@ -97,7 +98,7 @@ class ODMDEMStage(types.ODM_Stage):
 
                     if args.tiles:
                         generate_dem_tiles(dem_geotiff_path, tree.path("%s_tiles" % product), args.max_concurrency, resolution)
-                    
+
                     if args.cog:
                         convert_to_cogeo(dem_geotiff_path, max_workers=args.max_concurrency)
 
