@@ -9,6 +9,7 @@ from opendm import gsd
 from opendm import types
 from opendm.dem import commands
 from opendm.dem import pdal
+from opendm.photo import find_largest_photo_dims
 
 class ODMeshingStage(types.ODM_Stage):
     def process(self, args, outputs):
@@ -43,6 +44,7 @@ class ODMeshingStage(types.ODM_Stage):
 
                 log.ODM_INFO('Writing ODM 2.5D Mesh file in: %s' % tree.odm_25dmesh)
 
+                # calculate GSD scaling based on point cloud density
                 pc_quality_scale = {
                     'ultra': 1.0,
                     'high': 2.0,
@@ -50,8 +52,17 @@ class ODMeshingStage(types.ODM_Stage):
                     'low': 8.0,
                     'lowest': 16.0
                 }
+                gsd_scaling = pc_quality_scale[args.pc_quality]
+                if 'depthmap_resolution_is_set' in args:
+                    max_dims = find_largest_photo_dims(reconstruction.photos)
+                    if max_dims is not None:
+                        w, h = max_dims
+                        max_dim = max(w, h)
+                        gsd_scaling = args.depthmap_resolution / max_dim
+
                 dem_resolution = gsd.cap_resolution(args.dem_resolution, tree.opensfm_reconstruction,
-                                                    gsd_scaling=pc_quality_scale[args.pc_quality],
+                                                    gsd_error_estimate=0,
+                                                    gsd_scaling=gsd_scaling,
                                                     ignore_gsd=args.ignore_gsd,
                                                     ignore_resolution=(not reconstruction.is_georeferenced()) and args.ignore_gsd,
                                                     has_gcp=reconstruction.has_gcp()) / 100.0

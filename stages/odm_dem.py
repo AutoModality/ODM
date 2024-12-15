@@ -12,6 +12,7 @@ from opendm.cropper import Cropper
 from opendm import pseudogeo
 from opendm.tiles.tiler import generate_dem_tiles
 from opendm.cogeo import convert_to_cogeo
+from opendm.photo import find_largest_photo_dims
 
 class ODMDEMStage(types.ODM_Stage):
     def process(self, args, outputs):
@@ -28,6 +29,7 @@ class ODMDEMStage(types.ODM_Stage):
             ignore_resolution = True
             pseudo_georeference = True
 
+        # calculate GSD scaling based on point cloud density
         pc_quality_scale = {
             'ultra': 1.0,
             'high': 2.0,
@@ -35,8 +37,17 @@ class ODMDEMStage(types.ODM_Stage):
             'low': 8.0,
             'lowest': 16.0
         }
+        gsd_scaling = pc_quality_scale[args.pc_quality]
+        if 'depthmap_resolution_is_set' in args:
+            max_dims = find_largest_photo_dims(reconstruction.photos)
+            if max_dims is not None:
+                w, h = max_dims
+                max_dim = max(w, h)
+                gsd_scaling = args.depthmap_resolution / max_dim
+
         resolution = gsd.cap_resolution(args.dem_resolution, tree.opensfm_reconstruction,
-                                        gsd_scaling=pc_quality_scale[args.pc_quality],
+                                        gsd_error_estimate=0,
+                                        gsd_scaling=gsd_scaling,
                                         ignore_gsd=args.ignore_gsd,
                                         ignore_resolution=ignore_resolution and args.ignore_gsd,
                                         has_gcp=reconstruction.has_gcp())
@@ -82,7 +93,7 @@ class ODMDEMStage(types.ODM_Stage):
                             decimation=args.dem_decimation,
                             max_workers=args.max_concurrency,
                             with_euclidean_map=args.dem_euclidean_map,
-                            apply_smoothing=True if product == 'dtm' else False,
+                            apply_smoothing=True,
                             max_tiles=None if reconstruction.has_geotagged_photos() else math.ceil(len(reconstruction.photos) / 2)
                         )
 
