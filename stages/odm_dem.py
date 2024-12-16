@@ -43,7 +43,7 @@ class ODMDEMStage(types.ODM_Stage):
             if max_dims is not None:
                 w, h = max_dims
                 max_dim = max(w, h)
-                gsd_scaling = args.depthmap_resolution / max_dim
+                gsd_scaling = max_dim / args.depthmap_resolution
 
         resolution = gsd.cap_resolution(args.dem_resolution, tree.opensfm_reconstruction,
                                         gsd_error_estimate=0,
