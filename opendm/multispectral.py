@@ -592,7 +592,7 @@ def find_ecc_homography(image_gray, align_image_gray, number_of_iterations=2000,
 
     if (min_dim <= 300):
         number_of_iterations = 5000
-        termination_eps = 1e-6
+        termination_eps = 1e-7
         gaussian_filter_size = 9 # a constant since there is only one pyramid level
     else:
         gaussian_filter_size = 5 # will be increased in each pyramid level iteration
