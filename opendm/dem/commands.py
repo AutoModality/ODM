@@ -233,7 +233,7 @@ def compute_euclidean_map(geotiff_path, output_path, overwrite=False):
         return output_path
 
 
-def median_smoothing(geotiff_path, output_path, window_size=512, num_workers=1, radius=4):
+def median_smoothing(geotiff_path, output_path, window_size=512, num_workers=1, radius=2):
     """ Apply median smoothing """
     start = datetime.now()
 
