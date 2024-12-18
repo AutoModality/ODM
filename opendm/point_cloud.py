@@ -301,7 +301,7 @@ def post_point_cloud_steps(args, tree, rerun=False):
                 f.write('Window: {}\n'.format(args.smrf_window))
 
     if args.pc_rectify:
-        commands.rectify(tree.odm_georeferencing_model_laz, reclassify_threshold=args.smrf_threshold*5)
+        commands.rectify(tree.odm_georeferencing_model_laz, reclassify_threshold=args.smrf_threshold*1.5) # 50% more than the input SMRF elevation threshold
 
     # XYZ point cloud output
     if args.pc_csv:
