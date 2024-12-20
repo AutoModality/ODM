@@ -34,7 +34,7 @@ def classify(lasFile, scalar, slope, threshold, window):
     start = datetime.now()
 
     try:
-        pdal.run_pdaltranslate_smrf(lasFile, lasFile, scalar, slope, threshold, window)
+        pdal.run_pdaltranslate_pmf(lasFile, lasFile, scalar, slope, threshold, window)
     except:
         log.ODM_WARNING("Error creating classified file %s" % lasFile)
 

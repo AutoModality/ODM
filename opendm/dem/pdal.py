@@ -76,7 +76,7 @@ def json_las_base(fout):
     json = json_base()
     json['pipeline'].insert(0, {
         'type': 'writers.las',
-        'filename': fout  
+        'filename': fout
     })
     return json
 
@@ -153,8 +153,8 @@ def run_pipeline(json):
     os.remove(jsonfile)
 
 
-def run_pdaltranslate_smrf(fin, fout, scalar, slope, threshold, window):
-    """ Run PDAL translate  """
+def run_pdaltranslate_smrf(fin, fout, scalar=1.25, slope=1.5, threshold=0.5, window=18):
+    """ Run PDAL translate using Simple Morphological Filter (SMRF)) """
     cmd = [
         'pdal',
         'translate',
@@ -169,6 +169,21 @@ def run_pdaltranslate_smrf(fin, fout, scalar, slope, threshold, window):
 
     system.run(' '.join(cmd))
 
+def run_pdaltranslate_pmf(fin, fout, cell_size=1, slope=0.08, max_distance=0.2, max_window_size=50):
+    """ Run PDAL translate using Progressive Morphological Filter (PMF) """
+    cmd = [
+        'pdal',
+        'translate',
+        '-i %s' % fin,
+        '-o %s' % fout,
+        'pmf',
+        '--filters.pmf.cell_size=%s' % 1 if cell_size < 1 else cell_size,
+        '--filters.pmf.slope=%s' % slope,
+        '--filters.pmf.max_distance=%s' % max_distance,
+        '--filters.pmf.max_window_size=%s' % max_window_size,
+    ]
+
+    system.run(' '.join(cmd))
 
 def merge_point_clouds(input_files, output_file):
     if len(input_files) == 0:

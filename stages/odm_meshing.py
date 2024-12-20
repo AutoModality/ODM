@@ -75,7 +75,7 @@ class ODMeshingStage(types.ODM_Stage):
 
                 dem_input = tree.filtered_point_cloud
                 if args.texturing_use_dtm:
-                    pdal.run_pdaltranslate_smrf(tree.filtered_point_cloud,
+                    pdal.run_pdaltranslate_pmf(tree.filtered_point_cloud,
                                                 tree.filtered_point_cloud_classified,
                                                 args.smrf_scalar,
                                                 args.smrf_slope,
