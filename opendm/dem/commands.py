@@ -35,10 +35,10 @@ def classify(lasFile, scalar, slope, threshold, window):
 
     try:
         pdal.run_pdaltranslate_pmf(lasFile, lasFile, scalar, slope, threshold, window)
-    except:
-        log.ODM_WARNING("Error creating classified file %s" % lasFile)
+        log.ODM_INFO('Created %s in %s' % (lasFile, datetime.now() - start))
+    except Exception as e:
+        log.ODM_WARNING("Error creating classified file %s %s" % (lasFile, str(e)))
 
-    log.ODM_INFO('Created %s in %s' % (lasFile, datetime.now() - start))
     return lasFile
 
 def rectify(lasFile, reclassify_threshold=5, min_area=750, min_points=500):
