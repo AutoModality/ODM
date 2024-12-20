@@ -169,7 +169,7 @@ def run_pdaltranslate_smrf(fin, fout, scalar=1.25, slope=1.5, threshold=0.5, win
 
     system.run(' '.join(cmd))
 
-def run_pdaltranslate_pmf(fin, fout, cell_size=1, slope=0.08, max_distance=0.2, max_window_size=50):
+def run_pdaltranslate_pmf(fin, fout, scalar=0, slope=1.5, max_distance=0.5, max_window_size=18):
     """ Run PDAL translate using Progressive Morphological Filter (PMF) """
     cmd = [
         'pdal',
@@ -177,7 +177,7 @@ def run_pdaltranslate_pmf(fin, fout, cell_size=1, slope=0.08, max_distance=0.2, 
         '-i %s' % fin,
         '-o %s' % fout,
         'pmf',
-        '--filters.pmf.cell_size=%s' % 1 if cell_size < 1 else cell_size,
+        '--filters.pmf.exponential=%s' % ('true' if scalar > 0 else 'false'),
         '--filters.pmf.slope=%s' % slope,
         '--filters.pmf.max_distance=%s' % max_distance,
         '--filters.pmf.max_window_size=%s' % max_window_size,
