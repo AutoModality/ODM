@@ -75,12 +75,13 @@ class ODMeshingStage(types.ODM_Stage):
 
                 dem_input = tree.filtered_point_cloud
                 if args.texturing_use_dtm:
-                    pdal.run_pdaltranslate_pmf(tree.filtered_point_cloud,
-                                                tree.filtered_point_cloud_classified,
-                                                args.smrf_scalar,
-                                                args.smrf_slope,
-                                                args.smrf_threshold,
-                                                args.smrf_window)
+                    pdal.run_pdal_translate(tree.filtered_point_cloud,
+                                            tree.filtered_point_cloud_classified,
+                                            args.smrf_scalar,
+                                            args.smrf_slope,
+                                            args.smrf_threshold,
+                                            args.smrf_window,
+                                            filter=args.pc_ground_filter)
                     dem_input = tree.filtered_point_cloud_classified
 
                 mesh.create_25dmesh(dem_input, tree.odm_25dmesh,

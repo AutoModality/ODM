@@ -287,7 +287,8 @@ def post_point_cloud_steps(args, tree, rerun=False):
                                 args.smrf_scalar,
                                 args.smrf_slope,
                                 args.smrf_threshold,
-                                args.smrf_window
+                                args.smrf_window,
+                                filter=args.pc_ground_filter
                             )
 
             # log.ODM_INFO("Classifying {} using OpenPointClass".format(tree.odm_georeferencing_model_laz))

@@ -153,39 +153,37 @@ def run_pipeline(json):
     os.remove(jsonfile)
 
 
-def run_pdaltranslate_smrf(fin, fout, scalar=1.25, slope=1.5, threshold=0.5, window=18):
-    """ Run PDAL translate using Simple Morphological Filter (SMRF)) """
-    cmd = [
-        'pdal',
-        'translate',
-        '-i %s' % fin,
-        '-o %s' % fout,
-        'smrf',
-        '--filters.smrf.scalar=%s' % scalar,
-        '--filters.smrf.slope=%s' % slope,
-        '--filters.smrf.threshold=%s' % threshold,
-        '--filters.smrf.window=%s' % window,
-    ]
+def run_pdal_translate(fin, fout, scalar, slope, threshold, window, filter='smrf'):
+    """ Run PDAL translate with ground point classification filter """
+    if filter == 'pfm':
+        cmd = [
+            'pdal',
+            'translate',
+            '-i %s' % fin,
+            '-o %s' % fout,
+            'pmf',
+            '--filters.pmf.exponential=%s' % ('true' if scalar > 1 else 'false'),
+            '--filters.pmf.slope=%s' % slope,
+            '--filters.pmf.max_distance=%s' % threshold,
+            '--filters.pmf.max_window_size=%s' % (window * 2),
+        ]
+
+    # default to SMRF filter
+    else:
+        cmd = [
+            'pdal',
+            'translate',
+            '-i %s' % fin,
+            '-o %s' % fout,
+            'smrf',
+            '--filters.smrf.scalar=%s' % scalar,
+            '--filters.smrf.slope=%s' % slope,
+            '--filters.smrf.threshold=%s' % threshold,
+            '--filters.smrf.window=%s' % window,
+        ]
 
     system.run(' '.join(cmd))
 
-def run_pdaltranslate_pmf(fin, fout, scalar=0, slope=1.5, max_distance=0.5, max_window_size=18):
-    """ Run PDAL translate using Progressive Morphological Filter (PMF) """
-    cmd = [
-        'pdal',
-        'translate',
-        '-i %s' % fin,
-        '-o %s' % fout,
-        'pmf',
-        '--filters.pmf.cell_size=0.5'
-        '--filters.pmf.exponential=%s' % ('true' if scalar > 0 else 'false'),
-        '--filters.pmf.slope=%s' % slope,
-        '--filters.pmf.initial_distance=0.05',
-        '--filters.pmf.max_distance=%s' % max_distance,
-        '--filters.pmf.max_window_size=%s' % max_window_size,
-    ]
-
-    system.run(' '.join(cmd))
 
 def merge_point_clouds(input_files, output_file):
     if len(input_files) == 0:

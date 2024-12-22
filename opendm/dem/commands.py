@@ -30,11 +30,12 @@ except ModuleNotFoundError:
     except:
         pass
 
-def classify(lasFile, scalar, slope, threshold, window):
+def classify(lasFile, scalar, slope, threshold, window, filter='smrf'):
     start = datetime.now()
 
     try:
-        pdal.run_pdaltranslate_pmf(lasFile, lasFile, scalar, slope, threshold, window)
+        pdal.run_pdal_translate(lasFile, lasFile, scalar, slope, threshold, window, filter)
+
         log.ODM_INFO('Created %s in %s' % (lasFile, datetime.now() - start))
     except Exception as e:
         log.ODM_WARNING("Error creating classified file %s %s" % (lasFile, str(e)))

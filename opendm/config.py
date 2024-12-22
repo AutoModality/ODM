@@ -560,6 +560,14 @@ def config(argv=None, parser=None):
                         help='Improve the accuracy of the point cloud by computing geometrically consistent depthmaps. This increases processing time, but can improve results in urban scenes. '
                              'Default: %(default)s')
 
+    parser.add_argument('--pc-ground-filter',
+                        metavar='<string>',
+                        action=StoreValue,
+                        default='smrf',
+                        choices=['smrf', 'pmf'],
+                        help='Set ground point classification filter. Can be one of: %(choices)s. '
+                             'Default: %(default)s')
+
     parser.add_argument('--smrf-scalar',
                         metavar='<positive float>',
                         action=StoreValue,
