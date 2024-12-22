@@ -282,7 +282,7 @@ def post_point_cloud_steps(args, tree, rerun=False):
         pc_classify_marker = os.path.join(tree.odm_georeferencing, 'pc_classify_done.txt')
 
         if not io.file_exists(pc_classify_marker) or rerun:
-            log.ODM_INFO("Classifying {} using Simple Morphological Filter (1/2)".format(tree.odm_georeferencing_model_laz))
+            log.ODM_INFO("Classifying {} using morphological filter".format(tree.odm_georeferencing_model_laz))
             commands.classify(tree.odm_georeferencing_model_laz,
                                 args.smrf_scalar,
                                 args.smrf_slope,
@@ -290,7 +290,7 @@ def post_point_cloud_steps(args, tree, rerun=False):
                                 args.smrf_window
                             )
 
-            log.ODM_INFO("Classifying {} using OpenPointClass (2/2) ... Skipped".format(tree.odm_georeferencing_model_laz))
+            # log.ODM_INFO("Classifying {} using OpenPointClass".format(tree.odm_georeferencing_model_laz))
             # classify(tree.odm_georeferencing_model_laz, args.max_concurrency)
 
             with open(pc_classify_marker, 'w') as f:

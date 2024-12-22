@@ -177,8 +177,10 @@ def run_pdaltranslate_pmf(fin, fout, scalar=0, slope=1.5, max_distance=0.5, max_
         '-i %s' % fin,
         '-o %s' % fout,
         'pmf',
+        '--filters.pmf.cell_size=0.5'
         '--filters.pmf.exponential=%s' % ('true' if scalar > 0 else 'false'),
         '--filters.pmf.slope=%s' % slope,
+        '--filters.pmf.initial_distance=0.05',
         '--filters.pmf.max_distance=%s' % max_distance,
         '--filters.pmf.max_window_size=%s' % max_window_size,
     ]
