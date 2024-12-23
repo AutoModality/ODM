@@ -155,7 +155,7 @@ def run_pipeline(json):
 
 def run_pdal_translate(fin, fout, scalar, slope, threshold, window, filter='smrf'):
     """ Run PDAL translate with ground point classification filter """
-    if filter == 'pfm':
+    if filter == 'pmf':
         cmd = [
             'pdal',
             'translate',
