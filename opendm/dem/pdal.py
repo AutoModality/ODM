@@ -76,7 +76,7 @@ def json_las_base(fout):
     json = json_base()
     json['pipeline'].insert(0, {
         'type': 'writers.las',
-        'filename': fout  
+        'filename': fout
     })
     return json
 
@@ -153,19 +153,34 @@ def run_pipeline(json):
     os.remove(jsonfile)
 
 
-def run_pdaltranslate_smrf(fin, fout, scalar, slope, threshold, window):
-    """ Run PDAL translate  """
-    cmd = [
-        'pdal',
-        'translate',
-        '-i %s' % fin,
-        '-o %s' % fout,
-        'smrf',
-        '--filters.smrf.scalar=%s' % scalar,
-        '--filters.smrf.slope=%s' % slope,
-        '--filters.smrf.threshold=%s' % threshold,
-        '--filters.smrf.window=%s' % window,
-    ]
+def run_pdal_translate(fin, fout, scalar, slope, threshold, window, filter='smrf'):
+    """ Run PDAL translate with ground point classification filter """
+    if filter == 'pmf':
+        cmd = [
+            'pdal',
+            'translate',
+            '-i %s' % fin,
+            '-o %s' % fout,
+            'pmf',
+            '--filters.pmf.exponential=%s' % ('true' if scalar > 1 else 'false'),
+            '--filters.pmf.slope=%s' % slope,
+            '--filters.pmf.max_distance=%s' % threshold,
+            '--filters.pmf.max_window_size=%s' % (window * 2),
+        ]
+
+    # default to SMRF filter
+    else:
+        cmd = [
+            'pdal',
+            'translate',
+            '-i %s' % fin,
+            '-o %s' % fout,
+            'smrf',
+            '--filters.smrf.scalar=%s' % scalar,
+            '--filters.smrf.slope=%s' % slope,
+            '--filters.smrf.threshold=%s' % threshold,
+            '--filters.smrf.window=%s' % window,
+        ]
 
     system.run(' '.join(cmd))
 

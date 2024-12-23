@@ -81,7 +81,7 @@ def cap_resolution(resolution, reconstruction_json, gsd_error_estimate = 0.1, gs
     if ignore_gsd:
         return resolution
 
-    gsd = opensfm_reconstruction_average_gsd(reconstruction_json, use_all_shots=has_gcp or ignore_resolution)
+    gsd = opensfm_reconstruction_average_gsd(reconstruction_json, use_all_shots=has_gcp or ignore_resolution or gsd_error_estimate==0)
 
     if gsd is not None:
         gsd = gsd * (1 - gsd_error_estimate) * gsd_scaling
@@ -102,7 +102,7 @@ def opensfm_reconstruction_average_gsd(reconstruction_json, use_all_shots=False)
     """
     Computes the average Ground Sampling Distance of an OpenSfM reconstruction.
     :param reconstruction_json path to OpenSfM's reconstruction.json
-    :return Ground Sampling Distance value (cm / pixel) or None if 
+    :return Ground Sampling Distance value (cm / pixel) or None if
         a GSD estimate cannot be compute
     """
     if not os.path.isfile(reconstruction_json):
@@ -132,17 +132,17 @@ def opensfm_reconstruction_average_gsd(reconstruction_json, use_all_shots=False)
             if not focal_ratio:
                 log.ODM_WARNING("Cannot parse focal values from %s. This is likely an unsupported camera model." % reconstruction_json)
                 return None
-                
-            gsds.append(calculate_gsd_from_focal_ratio(focal_ratio, 
-                                                        shot_height - ground_height, 
+
+            gsds.append(calculate_gsd_from_focal_ratio(focal_ratio,
+                                                        shot_height - ground_height,
                                                         camera['width']))
-    
+
     if len(gsds) > 0:
         mean = np.mean(gsds)
         if mean < 0:
             log.ODM_WARNING("Negative GSD estimated, this might indicate a flipped Z-axis.")
         return abs(mean)
-    
+
     return None
 
 
@@ -160,8 +160,8 @@ def calculate_gsd(sensor_width, flight_height, focal_length, image_width):
     >>> calculate_gsd(13.2, 100, 8.8, 0)
     """
     if sensor_width != 0:
-        return calculate_gsd_from_focal_ratio(focal_length / sensor_width, 
-                                                flight_height, 
+        return calculate_gsd_from_focal_ratio(focal_length / sensor_width,
+                                                flight_height,
                                                 image_width)
     else:
         return None
@@ -176,5 +176,5 @@ def calculate_gsd_from_focal_ratio(focal_ratio, flight_height, image_width):
     """
     if focal_ratio == 0 or image_width == 0:
         return None
-    
+
     return ((flight_height * 100) / image_width) / focal_ratio

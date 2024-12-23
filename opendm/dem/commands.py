@@ -30,15 +30,16 @@ except ModuleNotFoundError:
     except:
         pass
 
-def classify(lasFile, scalar, slope, threshold, window):
+def classify(lasFile, scalar, slope, threshold, window, filter='smrf'):
     start = datetime.now()
 
     try:
-        pdal.run_pdaltranslate_smrf(lasFile, lasFile, scalar, slope, threshold, window)
-    except:
-        log.ODM_WARNING("Error creating classified file %s" % lasFile)
+        pdal.run_pdal_translate(lasFile, lasFile, scalar, slope, threshold, window, filter)
 
-    log.ODM_INFO('Created %s in %s' % (lasFile, datetime.now() - start))
+        log.ODM_INFO('Created %s in %s' % (lasFile, datetime.now() - start))
+    except Exception as e:
+        log.ODM_WARNING("Error creating classified file %s %s" % (lasFile, str(e)))
+
     return lasFile
 
 def rectify(lasFile, reclassify_threshold=5, min_area=750, min_points=500):
@@ -233,7 +234,7 @@ def compute_euclidean_map(geotiff_path, output_path, overwrite=False):
         return output_path
 
 
-def median_smoothing(geotiff_path, output_path, window_size=512, num_workers=1, radius=4):
+def median_smoothing(geotiff_path, output_path, window_size=512, num_workers=1, radius=2):
     """ Apply median smoothing """
     start = datetime.now()
 
