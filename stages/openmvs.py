@@ -62,13 +62,13 @@ class ODMOpenMVSStage(types.ODM_Stage):
             number_views = args.min_num_views - 1 # The number of views that OpenMVS considers for depthmap estimation
             number_views_fuse = 2 # The minimum number of images that agrees with an estimate during fusion in order to consider it inlier
             densify_ini_file = os.path.join(tree.openmvs, 'Densify.ini')
-            subres_levels = 0 # The number of lower resolutions to process before estimating output resolution depthmap (0 = disabled)
+            subres_levels = 1 # The number of lower resolutions to process before estimating output resolution depthmap (0 = disabled)
             filter_point_th = -20
 
             config = [
                 "--resolution-level %s" % int(resolution_level),
                 '--dense-config-file "%s"' % densify_ini_file,
-                "--min-resolution %s" % depthmap_resolution,
+                # "--min-resolution %s" % depthmap_resolution,
                 "--max-resolution %s" % int(outputs['undist_image_max_size']),
                 "--max-threads %s" % args.max_concurrency,
                 "--number-views-fuse %s" % number_views_fuse,
@@ -163,7 +163,7 @@ class ODMOpenMVSStage(types.ODM_Stage):
                         # Fuse
                         config = [
                             '--resolution-level %s' % int(resolution_level),
-                            "--min-resolution %s" % depthmap_resolution,
+                            # "--min-resolution %s" % depthmap_resolution,
                             '--max-resolution %s' % int(outputs['undist_image_max_size']),
                             "--sub-resolution-levels %s" % subres_levels,
                             '--dense-config-file "%s"' % subscene_densify_ini_file,
