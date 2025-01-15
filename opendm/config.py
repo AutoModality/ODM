@@ -300,7 +300,7 @@ def config(argv=None, parser=None):
             action=StoreValue,
             default=30,
             type=int,
-            help='Randomly sample a sub set of input images to find the best alignment transforms. Set to -1 to use all input images. Default: %(default)s')
+            help='Randomly sample a sub set of input images to find the best alignment transforms. Set to 0 to use all input images. Default: %(default)s')
 
     parser.add_argument('--band-alignment-local-homography',
             action=StoreTrue,
