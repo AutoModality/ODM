@@ -353,9 +353,8 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
 
             # For MicaSense sensors, only apply use_local_warp_matrix and max_samples to the LWIR band
             first_photo = band['photos'][0]
-            log.ODM_INFO("The first photo in the band %s: %s" % (band['name'], first_photo))
             if first_photo is not None:
-                if use_local_warp_matrix and first_photo.camera_make == 'MicaSense' and first_photo.band_name != 'LWIR':
+                if first_photo.camera_make == 'MicaSense' and first_photo.band_name != 'LWIR':
                     use_local_warp_matrix = False
                     max_samples = 30
 
