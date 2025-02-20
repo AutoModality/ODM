@@ -348,8 +348,15 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
     for band in multi_camera:
         if band['name'] != primary_band_name:
             matrices_samples = []
-            use_local_warp_matrix = use_local_homography # and band['name'] == 'LWIR'
+            use_local_warp_matrix = use_local_homography
             max_samples = max_samples if not use_local_warp_matrix and max_samples > 0 and max_samples < len(band['photos']) else len(band['photos'])
+
+            # For MicaSense sensors, only apply use_local_warp_matrix and max_samples to the LWIR band
+            first_photo = band['photos'][0]
+            if first_photo is not None:
+                if first_photo.camera_make == 'MicaSense' and first_photo.band_name != 'LWIR':
+                    use_local_warp_matrix = False
+                    max_samples = 30
 
             def parallel_compute_homography(photo):
                 filename = photo.filename
