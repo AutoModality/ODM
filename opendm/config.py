@@ -69,7 +69,6 @@ rerun_stages = {
     'pc_quality': 'opensfm',
     'pc_rectify': 'odm_georeferencing',
     'pc_sample': 'odm_filterpoints',
-    'pc_skip_geometric': 'openmvs',
     'primary_band': 'dataset',
     'project_path': None,
     'radiometric_calibration': 'opensfm',
